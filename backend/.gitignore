@@ -1,0 +1,10 @@
+node_modules/
+dist/
+
+# Secrets d'environnement
+.env
+.env.*
+!.env.example
+
+# Justificatifs uploadés (routes/expenses.ts) — données utilisateur
+uploads/

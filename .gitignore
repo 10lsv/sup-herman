@@ -1,0 +1,30 @@
+# Dépendances
+node_modules/
+
+# Builds
+dist/
+dist-ssr/
+*.local
+
+# Secrets d'environnement — seul .env.example est versionné
+.env
+.env.*
+!.env.example
+
+# Justificatifs déposés par les utilisateurs (notes de frais et congés)
+backend/uploads/
+
+# Outillage local
+.claude/
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+
+# Système et éditeurs
+.DS_Store
+.vscode/*
+!.vscode/extensions.json
+.idea/
