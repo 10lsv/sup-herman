@@ -97,7 +97,11 @@ authRouter.post('/register', async (req: Request, res: Response, next: NextFunct
        RETURNING *`,
       [normalizedEmail, password_hash, first_name, last_name, role satisfies UserRole, department ?? null],
     );
+    // RETURNING * sur un INSERT réussi renvoie toujours une ligne, mais
+    // noUncheckedIndexedAccess ne le sait pas : on lève explicitement plutôt
+    // que de masquer le cas par une assertion.
     const user = insert.rows[0];
+    if (!user) throw new Error('Insertion utilisateur sans ligne retournée');
 
     const token = signAuthToken({ id: user.id, email: user.email, role: user.role });
     const body: LoginResponse = { token, user: toPublicUser(user) };

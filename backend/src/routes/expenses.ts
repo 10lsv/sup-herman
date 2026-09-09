@@ -104,7 +104,10 @@ async function findNote(id: number): Promise<ExpenseNote | null> {
   return rows[0] ?? null;
 }
 
-function parseId(raw: string | undefined): number | null {
+// `req.params.x` est typé `string | string[]` sous Express 5 : on rejette le
+// cas tableau plutôt que de le caster (même helper que routes/leaves.ts).
+function parseId(raw: string | string[] | undefined): number | null {
+  if (typeof raw !== 'string') return null;
   const id = Number(raw);
   return Number.isInteger(id) && id > 0 ? id : null;
 }

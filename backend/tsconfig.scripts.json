@@ -1,0 +1,14 @@
+{
+  // Vérification de types seule, pour les utilitaires hors livrable
+  // (scripts/seed.ts, lancé par tsx). Le tsconfig principal les exclut parce
+  // que rootDir vaut ./src ; sans cette config, ils ne seraient plus vérifiés.
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "rootDir": ".",
+    "noEmit": true,
+    "declaration": false,
+    "declarationMap": false,
+    "sourceMap": false
+  },
+  "include": ["src/**/*", "scripts/**/*"]
+}

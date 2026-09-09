@@ -34,9 +34,12 @@ export function signAuthToken(
     email: user.email,
     role: user.role,
   };
-  const options: SignOptions = {
-    expiresIn: expiresIn ?? ((process.env.JWT_EXPIRES_IN ?? '12h') as SignOptions['expiresIn']),
-  };
+  // `expiresIn` est optionnel dans SignOptions mais n'accepte pas `undefined`
+  // sous exactOptionalPropertyTypes : on résout la valeur avant de construire
+  // l'objet, au lieu d'y placer un éventuel undefined.
+  const ttl: NonNullable<SignOptions['expiresIn']> =
+    expiresIn ?? ((process.env.JWT_EXPIRES_IN ?? '12h') as NonNullable<SignOptions['expiresIn']>);
+  const options: SignOptions = { expiresIn: ttl };
   return jwt.sign(payload, getJwtSecret(), options);
 }
 

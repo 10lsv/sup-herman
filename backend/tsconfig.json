@@ -1,44 +1,42 @@
 {
-  // Visit https://aka.ms/tsconfig to read more about this file
+  // Aligné sur "type": "commonjs" du package.json : le code émis utilise
+  // require/exports, et __dirname (utilisé pour le schéma SQL et le dossier
+  // d'upload) reste disponible.
   "compilerOptions": {
-    // File Layout
-    // "rootDir": "./src",
-    // "outDir": "./dist",
+    // Disposition des fichiers — `npm start` lance dist/index.js, la racine de
+    // compilation est donc src/ et non le dossier du projet.
+    "rootDir": "./src",
+    "outDir": "./dist",
 
-    // Environment Settings
-    // See also https://aka.ms/tsconfig/module
-    "module": "nodenext",
-    "target": "esnext",
-    "types": [],
-    // For nodejs:
-    // "lib": ["esnext"],
-    // "types": ["node"],
-    // and npm install -D @types/node
+    // Environnement — TypeScript 7 a supprimé moduleResolution "node"
+    // (node10). "node16" est son remplaçant, et il impose module "node16" :
+    // avec "type": "commonjs" dans package.json, l'émission reste du CommonJS
+    // (require/exports, __dirname), ce qui est le comportement recherché.
+    "module": "node16",
+    "moduleResolution": "node16",
+    "target": "es2022",
+    "lib": ["es2023"],
+    "types": ["node"],
 
-    // Other Outputs
+    // Sorties annexes
     "sourceMap": true,
     "declaration": true,
     "declarationMap": true,
 
-    // Stricter Typechecking Options
+    // Vérifications strictes
+    "strict": true,
     "noUncheckedIndexedAccess": true,
     "exactOptionalPropertyTypes": true,
 
-    // Style Options
-    // "noImplicitReturns": true,
-    // "noImplicitOverride": true,
-    // "noUnusedLocals": true,
-    // "noUnusedParameters": true,
-    // "noFallthroughCasesInSwitch": true,
-    // "noPropertyAccessFromIndexSignature": true,
-
-    // Recommended Options
-    "strict": true,
-    "jsx": "react-jsx",
-    "verbatimModuleSyntax": true,
-    "isolatedModules": true,
-    "noUncheckedSideEffectImports": true,
-    "moduleDetection": "force",
-    "skipLibCheck": true,
-  }
+    // Interopérabilité CommonJS / ES modules
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "forceConsistentCasingInFileNames": true,
+    "skipLibCheck": true
+  },
+  // scripts/seed.ts est un utilitaire de développement lancé par tsx : il n'a
+  // pas sa place dans le livrable, et l'inclure entrerait en conflit avec
+  // rootDir.
+  "include": ["src/**/*"],
+  "exclude": ["node_modules", "dist"]
 }
