@@ -1,0 +1,366 @@
+# xFINT1 — Gestion des Notes de Frais
+
+Application web de saisie et de validation des notes de frais. Un salarié
+déclare une dépense avec ses justificatifs, son manager la valide, la
+comptabilité la contrôle puis la marque remboursée.
+
+Le projet partage sa base de données, son authentification et son interface
+avec [xFINT2 — Congés et absences](./README-xFINT2.md). Les deux modules
+s'installent et se lancent ensemble.
+
+---
+
+## 1. Installation
+
+### Prérequis
+
+- Node.js 20 ou supérieur (développé et testé sous Node 24.14, npm 11.11)
+- PostgreSQL 15 ou supérieur, en local ou via Docker
+- Git
+
+### Récupérer les dépendances
+
+```bash
+git clone <url-du-dépôt> sup-herman-projects
+cd sup-herman-projects
+
+cd backend  && npm install
+cd ../frontend && npm install
+```
+
+### Base de données
+
+Le projet n'embarque pas de fichier `docker-compose.yml`. Pour lancer un
+PostgreSQL jetable :
+
+```bash
+docker run -d --name supherman-db \
+  -e POSTGRES_PASSWORD=<mot-de-passe> \
+  -e POSTGRES_DB=supherman \
+  -p 5432:5432 \
+  postgres:15
+```
+
+Aucune commande de migration à jouer à la main : au premier démarrage, le
+serveur détecte que la table `users` est absente et applique
+`backend/src/database/schema.sql`, puis rejoue les migrations de
+`backend/src/database/migrations/` (elles sont idempotentes).
+
+---
+
+## 2. Configuration
+
+### `backend/.env`
+
+| Variable | Obligatoire | Défaut | Rôle |
+|---|---|---|---|
+| `DATABASE_URL` | oui | — | Chaîne de connexion PostgreSQL |
+| `JWT_SECRET` | oui | — | Clé de signature des jetons. Le serveur refuse de démarrer sans elle |
+| `JWT_EXPIRES_IN` | non | `12h` | Durée de vie d'un jeton |
+| `PORT` | non | `3000` | Port d'écoute de l'API |
+| `CORS_ORIGIN` | non | `http://localhost:5173` | Origine autorisée pour le front |
+
+Exemple :
+
+```ini
+DATABASE_URL=postgresql://postgres:<mot-de-passe>@localhost:5432/supherman
+JWT_SECRET=<chaîne-aléatoire-longue>
+JWT_EXPIRES_IN=12h
+PORT=3000
+CORS_ORIGIN=http://localhost:5173
+```
+
+### `frontend/.env`
+
+Une seule variable, optionnelle :
+
+| Variable | Défaut | Rôle |
+|---|---|---|
+| `VITE_API_URL` | `http://localhost:3000` | URL de base de l'API |
+
+Si le backend tourne sur le port par défaut, ce fichier est inutile.
+
+### Stockage des justificatifs
+
+Les fichiers sont écrits sur disque dans `backend/uploads/`, créé
+automatiquement. Le nom sur disque est un UUID généré par le serveur ; le nom
+d'origine est conservé en base. Rien à configurer.
+
+---
+
+## 3. Lancer le projet
+
+Deux terminaux :
+
+```bash
+# Terminal 1 — API sur http://localhost:3000
+cd backend
+npm run dev
+
+# Terminal 2 — interface sur http://localhost:5173
+cd frontend
+npm run dev
+```
+
+Puis, une fois le backend démarré au moins une fois (les tables doivent
+exister), créer les comptes de démonstration :
+
+```bash
+cd backend
+npm run seed
+```
+
+Le seed est idempotent : un email déjà présent est ignoré, jamais écrasé.
+
+### Scripts disponibles
+
+| Emplacement | Commande | Effet |
+|---|---|---|
+| `backend` | `npm run dev` | API en rechargement à chaud (tsx watch) |
+| `backend` | `npm run build` | Compilation TypeScript vers `dist/` |
+| `backend` | `npm start` | Lance `dist/index.js` |
+| `backend` | `npm run seed` | Crée les comptes de démonstration |
+| `frontend` | `npm run dev` | Serveur de développement Vite |
+| `frontend` | `npm run build` | Vérification des types puis build de production |
+| `frontend` | `npm run preview` | Sert le build de production |
+| `frontend` | `npm run lint` | oxlint |
+
+Point de contrôle : `curl http://localhost:3000/health` doit répondre
+`{"ok":true,...}`.
+
+---
+
+## 4. Comptes de test
+
+Créés par `npm run seed` :
+
+| Email | Mot de passe | Rôle |
+|---|---|---|
+| `manager@supherman.com` | `Suph3rm4n!` | Manager |
+| `employee@supherman.com` | `Test123!` | Salarié |
+| `accounting@supherman.com` | `Test123!` | Comptabilité |
+| `hr@supherman.com` | `Test123!` | RH |
+
+Les trois derniers comptes sont rattachés au manager. Ces identifiants sont
+destinés au développement et à la démonstration : ils n'ont pas leur place sur
+un environnement exposé.
+
+---
+
+## 5. Manuel utilisateur
+
+### Le circuit d'une note de frais
+
+```
+    Salarié            Manager            Comptabilité       Comptabilité
+   ┌────────┐        ┌───────────┐       ┌──────────────┐   ┌────────────┐
+   │ saisie │──────▶│ validation │─────▶│  validation   │──▶│ remboursée │
+   └────────┘        └───────────┘       └──────────────┘   └────────────┘
+   submitted       approved_manager    approved_accounting    reimbursed
+                          │                    │
+                          └──── refus ─────────┘
+                                    ▼
+                                 rejected
+```
+
+Une note refusée ou remboursée est close : plus aucune décision n'est possible
+dessus. Personne ne peut valider sa propre note, quel que soit son rôle.
+
+### Salarié
+
+- **Mes notes de frais** (`/expenses`) — la liste de ses notes, avec le statut
+  courant. Un clic sur une ligne ouvre le détail.
+- **Nouvelle note** (`/expenses/new`) — titre, commentaire, catégorie
+  (Déplacement, Repas, Hébergement, Fournitures, Autre), montant, date de
+  dépense, et les justificatifs.
+  - Formats acceptés : JPEG, PNG, WebP, HEIC, PDF.
+  - 10 Mo par fichier, 10 fichiers par envoi.
+  - La note est créée directement en attente de validation : il n'y a pas
+    d'étape brouillon.
+  - Si l'envoi des justificatifs échoue, la note reste créée et le message
+    l'indique — les fichiers peuvent être rajoutés depuis le détail.
+- **Détail d'une note** — statut, montant, catégorie, commentaires de décision
+  du manager et de la comptabilité, téléchargement des justificatifs.
+
+### Manager
+
+Tout ce qui précède, plus :
+
+- **À valider** (`/expenses/approvals`) — toutes les notes de l'entreprise, avec
+  le nom et l'email du salarié. Le filtre « À traiter uniquement », actif par
+  défaut, ne laisse que les notes en attente de sa décision et masque les
+  siennes propres.
+- Dans le détail : **Valider** ou **Refuser**, avec un commentaire facultatif
+  qui sera visible par le salarié.
+
+Le manager dispose aussi de l'écran **Utilisateurs** (`/admin/users`), décrit au
+paragraphe suivant.
+
+### Comptabilité
+
+- **Comptabilité** (`/expenses/accounting`) — même écran que celui du manager,
+  filtré sur les étapes qui la concernent.
+- Dans le détail : **Valider** une note déjà validée par le manager, puis
+  **Marquer remboursée** une fois le virement effectué. Le refus reste possible
+  tant que la note n'est pas remboursée.
+
+### Création de comptes (manager)
+
+`/admin/users` — saisir un email et choisir un rôle (Salarié, Manager,
+Comptabilité). Le compte est créé **sans mot de passe** : l'écran affiche alors
+un lien d'activation à transmettre à l'intéressé, qui y choisira son mot de
+passe.
+
+Ce lien n'est **affiché qu'une seule fois** — la base n'en conserve qu'une
+empreinte — et expire au bout de 7 jours. S'il est perdu, la RH peut définir un
+mot de passe provisoire depuis l'écran RH de xFINT2.
+
+---
+
+## 6. API
+
+Base : `http://localhost:3000`. Toutes les routes `/api/expenses` exigent un
+en-tête `Authorization: Bearer <jeton>`.
+
+### Authentification
+
+| Méthode | Route | Accès | Description |
+|---|---|---|---|
+| `POST` | `/api/auth/login` | public | `{ email, password }` → `{ token, user }` |
+| `POST` | `/api/auth/register` | public | Création d'un compte `manager` ou `admin` (amorçage) |
+| `POST` | `/api/auth/refresh` | connecté | Réémet un jeton pour un compte toujours actif |
+
+`POST /api/auth/login` répond `403` si le compte existe mais n'a pas encore de
+mot de passe, `401` si les identifiants sont faux ou le compte désactivé.
+
+### Notes de frais
+
+| Méthode | Route | Accès | Description |
+|---|---|---|---|
+| `GET` | `/api/expenses/mine` | connecté | Ses propres notes |
+| `GET` | `/api/expenses/all` | manager, comptabilité, admin | Toutes les notes, avec l'identité du salarié |
+| `POST` | `/api/expenses` | connecté | Création, statut `submitted` d'emblée |
+| `GET` | `/api/expenses/:id` | propriétaire ou rôle valideur | Détail + pièces jointes |
+| `PATCH` | `/api/expenses/:id/status` | manager, comptabilité, admin | Décision |
+| `POST` | `/api/expenses/:id/attachments` | propriétaire, admin | Envoi multipart, champ `files` |
+| `GET` | `/api/expenses/:id/attachments/:attachmentId` | propriétaire ou rôle valideur | Téléchargement |
+
+**`POST /api/expenses`**
+
+```json
+{
+  "title": "Taxi gare → client",
+  "comment": "Rendez-vous commercial",
+  "category": "travel",
+  "amount": 42.5,
+  "expense_date": "2026-09-01"
+}
+```
+
+`title` et `category` sont obligatoires. `amount` et `expense_date` ont un repli
+(0 et la date du jour). `comment` alimente la colonne `description`.
+
+**`PATCH /api/expenses/:id/status`**
+
+```json
+{ "status": "approved", "comment": "OK pour moi" }
+```
+
+`status` vaut `approved`, `rejected` ou `reimbursed`. Le statut réel est déduit
+du rôle et de l'étape en cours : un `approved` posé par un manager donne
+`approved_manager`, le même posé par la comptabilité donne
+`approved_accounting`. Une transition impossible renvoie `409`.
+
+### Codes de retour
+
+| Code | Signification |
+|---|---|
+| `400` | Payload invalide, identifiant mal formé, type de fichier refusé |
+| `401` | Jeton absent, invalide ou expiré |
+| `403` | Rôle insuffisant, ou tentative de valider sa propre note |
+| `404` | Ressource inexistante |
+| `409` | Transition de statut impossible |
+
+Le corps d'erreur est toujours `{ "error": "..." }`, éventuellement complété
+d'un champ `details` pour les erreurs de validation.
+
+---
+
+## 7. Architecture
+
+### Organisation
+
+```
+backend/
+  src/
+    index.ts              amorçage Express, schéma et migrations au démarrage
+    db.ts                 pool PostgreSQL
+    database/
+      schema.sql          schéma complet, joué sur une base vierge
+      migrations/         migrations idempotentes, rejouées à chaque démarrage
+    middleware/auth.ts    vérification du jeton, garde-fous par rôle
+    routes/
+      auth.ts             connexion, inscription, renouvellement
+      expenses.ts         xFINT1
+      leaves.ts           xFINT2
+      users.ts            annuaire et comptes
+    lib/                  jours ouvrés, configuration des uploads
+  scripts/seed.ts         comptes de démonstration
+  uploads/                justificatifs (hors dépôt)
+
+frontend/
+  src/
+    api.ts                client HTTP, jeton, téléchargements
+    types/index.ts        miroir des types backend
+    expenseLabels.ts      libellés, couleurs et formatage xFINT1
+    components/           Layout, ProtectedRoute, modales de détail
+    pages/xfint1/         écrans notes de frais
+    pages/xfint2/         écrans congés
+```
+
+### Schéma de données
+
+```
+users ──┬─< expense_notes ──< attachments
+        │        (user_id)      (expense_note_id)
+        ├──< leave_requests ──< leave_attachments      → voir xFINT2
+        └──< leave_balances
+```
+
+**`expense_notes`** porte deux jeux de colonnes de décision, un par étape :
+`manager_id` / `manager_comment` / `manager_action_at` d'un côté,
+`accountant_id` / `accountant_comment` / `accountant_action_at` de l'autre. La
+route d'écriture choisit le jeu selon le rôle qui agit, ce qui garde la trace
+des deux décisions.
+
+`amount` est un `NUMERIC(10,2)` : PostgreSQL le sérialise en chaîne, et les
+types TypeScript reflètent ce contrat des deux côtés.
+
+**`attachments`** ne stocke que le nom de fichier généré côté serveur dans
+`file_path`. Ce champ n'est jamais renvoyé par l'API, et le chemin est
+renormalisé avant lecture pour écarter toute traversée de répertoire.
+
+### Authentification
+
+1. `POST /api/auth/login` vérifie le mot de passe avec bcrypt (coût 12) et
+   renvoie un JWT contenant `{ id, email, role }`, signé avec le secret partagé
+   (HS256, l'algorithme par défaut de `jsonwebtoken`).
+2. Le front stocke le jeton et l'utilisateur dans `localStorage`, et joint
+   l'en-tête `Authorization` à chaque appel.
+3. Le middleware `authenticate` vérifie la signature et renseigne `req.user`.
+   `requireRole(...)` filtre ensuite par rôle.
+4. `ProtectedRoute` fait le pendant côté interface : redirection vers `/login`
+   sans session, vers l'accueil si le rôle ne convient pas.
+
+Le contrôle côté interface n'est qu'un confort d'affichage — chaque route de
+l'API applique ses propres vérifications.
+
+### Rôles
+
+| Rôle | Périmètre xFINT1 |
+|---|---|
+| `employee` | Ses propres notes |
+| `manager` | Ses notes, validation de toutes les notes, création de comptes |
+| `accounting` | Ses notes, validation comptable et remboursement |
+| `hr` | Ses notes uniquement (voir xFINT2 pour ses attributions) |
+| `admin` | Accès complet, avance d'une étape à la fois dans le circuit |
