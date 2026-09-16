@@ -246,7 +246,7 @@ export function ExpenseDetailModal({
                         disabled={acting}
                         style={styles.reimburse}
                       >
-                        {acting ? '…' : 'Marquer remboursée'}
+                        {acting ? '…' : 'Marquer traitée'}
                       </button>
                     )}
                   </div>

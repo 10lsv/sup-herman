@@ -3,10 +3,15 @@
 
 import type { LeaveStatus } from './types';
 
+/**
+ * Libellés du sujet xFINT2 : En attente, Validée, Refusée, Annulée. Une demande
+ * reste « En attente » tant que la RH n'a pas confirmé, quelle que soit l'étape
+ * interne (`submitted` puis `approved_manager`).
+ */
 export const LEAVE_STATUS_LABEL: Record<LeaveStatus, string> = {
-  draft: 'Brouillon',
-  submitted: 'En attente manager',
-  approved_manager: 'En attente RH',
+  draft: 'En attente',
+  submitted: 'En attente',
+  approved_manager: 'En attente',
   approved_hr: 'Validée',
   approved: 'Validée',
   rejected: 'Refusée',

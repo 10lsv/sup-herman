@@ -144,7 +144,7 @@ export function ExpenseApprovalsPage() {
         </div>
       )}
 
-      {/* La modale expose déjà Valider/Refuser (manager) et Marquer remboursée
+      {/* La modale expose déjà Valider/Refuser (manager) et Marquer traitée
           (comptabilité) selon le rôle et le statut courant. */}
       {selectedId !== null && (
         <ExpenseDetailModal

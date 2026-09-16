@@ -148,8 +148,10 @@ cd backend
 npm run seed
 ```
 
-Le seed affiche une ligne par compte créé. Il est idempotent : un email déjà
-présent est ignoré, jamais écrasé.
+Le seed affiche une ligne par compte. Il se relance sans risque : un compte
+absent est créé, un compte présent retrouve le mot de passe et le rôle de la
+section « Comptes de test » (le reste de sa fiche est conservé). Une base créée
+avec l'ancien compte `hr@supherman.com` le voit renommé en `rh@supherman.com`.
 
 Vérifier la connexion :
 
@@ -185,7 +187,7 @@ Créés par `npm run seed` :
 |---|---|---|
 | `manager@supherman.com` | `Suph3rm4n!` | Manager |
 | `employee@supherman.com` | `Test123!` | Salarié |
-| `hr@supherman.com` | `Test123!` | RH |
+| `rh@supherman.com` | `Suph3rm4n!` | RH |
 | `accounting@supherman.com` | `Test123!` | Comptabilité |
 
 Pour dérouler un circuit complet, il faut les trois premiers : le salarié
@@ -210,6 +212,18 @@ développement et à la démonstration.
         │                       rejected
         └──── annulation ──────▶ cancelled
 ```
+
+L'interface affiche les libellés du sujet :
+
+| Libellé affiché | Statuts internes |
+|---|---|
+| En attente | `submitted`, `approved_manager` — la demande attend le manager, puis la RH |
+| Validée | `approved_hr` |
+| Refusée | `rejected` |
+| Annulée | `cancelled` |
+
+Sur l'écran de validation, le filtre « Statut » porte sur ces libellés ; la case
+« À traiter par moi » isole les demandes qui attendent précisément votre étape.
 
 Le demandeur peut annuler sa demande à tout moment tant qu'elle n'est pas close,
 y compris après validation RH : les jours lui sont alors restitués. Personne ne
@@ -303,7 +317,7 @@ l'écran RH. Tout utilisateur connecté peut ensuite changer le sien depuis
 
 ---
 
-## 6. API
+## 6. Documentation de l'API
 
 Base : `http://localhost:3000`. Toutes les routes `/api/leaves` et, sauf
 exception signalée, `/api/users` exigent un en-tête

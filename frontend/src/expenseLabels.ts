@@ -10,13 +10,18 @@ export const CATEGORY_LABEL: Record<ExpenseCategory, string> = {
   other: 'Autre',
 };
 
+/**
+ * Libellés du sujet xFINT1 : Créée, Validée, Refusée, Traitée. Les statuts
+ * internes restent plus fins ; les deux étapes de validation partagent le
+ * libellé « Validée » et se distinguent par la couleur du badge.
+ */
 export const STATUS_LABEL: Record<ExpenseStatus, string> = {
-  draft: 'Brouillon',
-  submitted: 'En attente manager',
-  approved_manager: 'Validée manager',
-  approved_accounting: 'Validée comptabilité',
+  draft: 'Créée',
+  submitted: 'Créée',
+  approved_manager: 'Validée',
+  approved_accounting: 'Validée',
   rejected: 'Refusée',
-  reimbursed: 'Remboursée',
+  reimbursed: 'Traitée',
 };
 
 export const STATUS_COLOR: Record<ExpenseStatus, { bg: string; fg: string }> = {

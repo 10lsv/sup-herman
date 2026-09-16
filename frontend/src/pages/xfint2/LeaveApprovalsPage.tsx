@@ -21,12 +21,16 @@ const PENDING_BY_ROLE: Partial<Record<UserRole, LeaveStatus[]>> = {
   admin: ['submitted', 'approved_manager'],
 };
 
-const STATUS_FILTERS: LeaveStatus[] = [
-  'submitted',
-  'approved_manager',
-  'approved_hr',
-  'rejected',
-  'cancelled',
+/**
+ * Filtre par libellé affiché : plusieurs statuts internes partagent le même
+ * (`submitted` et `approved_manager` sont tous deux « En attente »).
+ */
+const STATUS_FILTERS: string[] = [
+  ...new Set(
+    (['submitted', 'approved_manager', 'approved_hr', 'rejected', 'cancelled'] as const).map(
+      (s) => LEAVE_STATUS_LABEL[s],
+    ),
+  ),
 ];
 
 export function LeaveApprovalsPage() {
@@ -38,7 +42,7 @@ export function LeaveApprovalsPage() {
 
   const [pendingOnly, setPendingOnly] = useState(true);
   const [employee, setEmployee] = useState('all');
-  const [status, setStatus] = useState<'all' | LeaveStatus>('all');
+  const [status, setStatus] = useState('all');
   const [type, setType] = useState('all');
 
   const load = useCallback(async () => {
@@ -87,7 +91,7 @@ export function LeaveApprovalsPage() {
         if (l.user_id === user?.id) return false;
       }
       if (employee !== 'all' && l.user_email !== employee) return false;
-      if (status !== 'all' && l.status !== status) return false;
+      if (status !== 'all' && LEAVE_STATUS_LABEL[l.status] !== status) return false;
       if (type !== 'all' && l.leave_type_code !== type) return false;
       return true;
     });
@@ -141,13 +145,13 @@ export function LeaveApprovalsPage() {
           Statut
           <select
             value={status}
-            onChange={(e) => setStatus(e.target.value as 'all' | LeaveStatus)}
+            onChange={(e) => setStatus(e.target.value)}
             style={styles.select}
           >
             <option value="all">Tous</option>
-            {STATUS_FILTERS.map((s) => (
-              <option key={s} value={s}>
-                {LEAVE_STATUS_LABEL[s]}
+            {STATUS_FILTERS.map((label) => (
+              <option key={label} value={label}>
+                {label}
               </option>
             ))}
           </select>

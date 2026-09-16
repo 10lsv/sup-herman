@@ -2,7 +2,7 @@
 
 Application web de saisie et de validation des notes de frais. Un salarié
 déclare une dépense avec ses justificatifs, son manager la valide, la
-comptabilité la contrôle puis la marque remboursée.
+comptabilité la contrôle puis la marque traitée (remboursée).
 
 Le projet partage sa base de données, son authentification et son interface
 avec [xFINT2 — Congés et absences](./README-xFINT2.md). Les deux modules
@@ -144,8 +144,10 @@ cd backend
 npm run seed
 ```
 
-Le seed affiche une ligne par compte créé. Il est idempotent : un email déjà
-présent est ignoré, jamais écrasé.
+Le seed affiche une ligne par compte. Il se relance sans risque : un compte
+absent est créé, un compte présent retrouve le mot de passe et le rôle de la
+section « Comptes de test » (le reste de sa fiche est conservé). Une base créée
+avec l'ancien compte `hr@supherman.com` le voit renommé en `rh@supherman.com`.
 
 Vérifier la connexion :
 
@@ -182,7 +184,7 @@ Créés par `npm run seed` :
 | `manager@supherman.com` | `Suph3rm4n!` | Manager |
 | `employee@supherman.com` | `Test123!` | Salarié |
 | `accounting@supherman.com` | `Test123!` | Comptabilité |
-| `hr@supherman.com` | `Test123!` | RH |
+| `rh@supherman.com` | `Suph3rm4n!` | RH |
 
 Les trois derniers comptes sont rattachés au manager. Ces identifiants sont
 destinés au développement et à la démonstration : ils n'ont pas leur place sur
@@ -206,7 +208,17 @@ un environnement exposé.
                                  rejected
 ```
 
-Une note refusée ou remboursée est close : plus aucune décision n'est possible
+L'interface affiche les libellés du sujet, plus synthétiques que les statuts
+internes :
+
+| Libellé affiché | Statuts internes |
+|---|---|
+| Créée | `submitted` |
+| Validée | `approved_manager`, `approved_accounting` — le badge est bleu après le manager, vert après la comptabilité |
+| Refusée | `rejected` |
+| Traitée | `reimbursed` |
+
+Une note refusée ou traitée est close : plus aucune décision n'est possible
 dessus. Personne ne peut valider sa propre note, quel que soit son rôle.
 
 ### Salarié
@@ -244,8 +256,8 @@ paragraphe suivant.
 - **Comptabilité** (`/expenses/accounting`) — même écran que celui du manager,
   filtré sur les étapes qui la concernent.
 - Dans le détail : **Valider** une note déjà validée par le manager, puis
-  **Marquer remboursée** une fois le virement effectué. Le refus reste possible
-  tant que la note n'est pas remboursée.
+  **Marquer traitée** une fois le virement effectué. Le refus reste possible
+  tant que la note n'est pas traitée.
 
 ### Création de comptes (manager)
 
@@ -264,7 +276,7 @@ mot de passe provisoire depuis l'écran RH de xFINT2.
 
 ---
 
-## 6. API
+## 6. Documentation de l'API
 
 Base : `http://localhost:3000`. Toutes les routes `/api/expenses` exigent un
 en-tête `Authorization: Bearer <jeton>`.
