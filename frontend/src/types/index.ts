@@ -140,6 +140,31 @@ export interface LeaveRequestDetail extends LeaveRequest {
   user_last_name: string;
 }
 
+/**
+ * Ligne de GET /api/leaves/calendar : congé validé, projection réduite ouverte
+ * à tous (ni motif, ni commentaire, ni justificatif, ni email).
+ */
+export interface CalendarLeave {
+  id: number;
+  user_id: number;
+  user_first_name: string;
+  user_last_name: string;
+  /** Manager de rattachement du salarié — pas le valideur de la demande. */
+  manager_id: number | null;
+  leave_type: { code: string; label: string };
+  date_start: string;
+  date_end: string;
+  days_requested: string;
+  status: Extract<LeaveStatus, 'approved_manager' | 'approved_hr' | 'approved'>;
+}
+
+/** Ligne de GET /api/users/managers. */
+export interface ManagerSummary {
+  id: number;
+  first_name: string;
+  last_name: string;
+}
+
 /** Pièce jointe d'une demande de congé. */
 export interface LeaveAttachment {
   id: number;

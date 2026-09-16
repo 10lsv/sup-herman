@@ -4,11 +4,10 @@ import { LeaveDetailModal } from '../../components/LeaveDetailModal';
 import { isHoliday, isWeekend } from '../../businessDays';
 import {
   formatDays,
-  isApprovedLeave,
   leaveTypeColor,
   todayISO,
 } from '../../leaveLabels';
-import type { LeaveRequestDetail } from '../../types';
+import type { CalendarLeave, ManagerSummary, UserRole } from '../../types';
 
 const WEEKDAYS = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
 const MONTHS = [
@@ -36,13 +35,27 @@ function monthGrid(year: number, month: number): (string | null)[] {
   return cells;
 }
 
+/** Rôles autorisés à ouvrir le détail d'une demande qui n'est pas la leur. */
+const DETAIL_ROLES: UserRole[] = ['manager', 'hr', 'admin'];
+
+/** `mine`, `all` ou `team:<manager_id>`. */
+type Scope = 'mine' | 'all' | `team:${number}`;
+
+function personName(first: string, last: string, fallback: string): string {
+  return `${first} ${last}`.trim() || fallback;
+}
+
 export function LeaveCalendarPage() {
   const user = getSessionUser();
-  const [leaves, setLeaves] = useState<LeaveRequestDetail[]>([]);
+  const [leaves, setLeaves] = useState<CalendarLeave[]>([]);
+  const [managers, setManagers] = useState<ManagerSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<number | null>(null);
-  const [scope, setScope] = useState<'all' | 'mine'>('all');
+  // Un manager arrive sur son équipe ; les autres sur toute l'entreprise.
+  const [scope, setScope] = useState<Scope>(() =>
+    user?.role === 'manager' ? `team:${user.id}` : 'all',
+  );
 
   const today = todayISO();
   const [cursor, setCursor] = useState(() => ({
@@ -50,9 +63,25 @@ export function LeaveCalendarPage() {
     month: Number(today.slice(5, 7)) - 1,
   }));
 
+  useEffect(() => {
+    apiFetch<ManagerSummary[]>('/api/users/managers')
+      .then(setManagers)
+      .catch(() => setManagers([]));
+  }, []);
+
+  // Le serveur ne renvoie que les congés validés qui chevauchent le mois
+  // affiché ; l'équipe est filtrée côté serveur, « Mes congés » côté client.
+  // Aucun setState avant le premier await : le mois courant reste affiché
+  // pendant le chargement du suivant.
   const load = useCallback(async () => {
+    const daysInMonth = new Date(Date.UTC(cursor.year, cursor.month + 1, 0)).getUTCDate();
+    const params = new URLSearchParams({
+      from: isoOf(cursor.year, cursor.month, 1),
+      to: isoOf(cursor.year, cursor.month, daysInMonth),
+    });
+    if (scope.startsWith('team:')) params.set('team', scope.slice('team:'.length));
     try {
-      const data = await apiFetch<LeaveRequestDetail[]>('/api/leaves/all');
+      const data = await apiFetch<CalendarLeave[]>(`/api/leaves/calendar?${params}`);
       setLeaves(data);
       setError(null);
     } catch (err) {
@@ -60,23 +89,19 @@ export function LeaveCalendarPage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [cursor.year, cursor.month, scope]);
 
   useEffect(() => {
     void load();
   }, [load]);
 
-  // Seuls les congés définitivement validés apparaissent au calendrier : une
-  // demande en attente n'est pas une absence acquise.
   const visible = useMemo(
-    () =>
-      leaves.filter(
-        (l) =>
-          isApprovedLeave(l.status) &&
-          (scope === 'all' || l.user_id === user?.id),
-      ),
+    () => (scope === 'mine' ? leaves.filter((l) => l.user_id === user?.id) : leaves),
     [leaves, scope, user?.id],
   );
+
+  const canOpen = (l: CalendarLeave) =>
+    l.user_id === user?.id || (user !== null && DETAIL_ROLES.includes(user.role));
 
   const cells = useMemo(
     () => monthGrid(cursor.year, cursor.month),
@@ -85,10 +110,10 @@ export function LeaveCalendarPage() {
 
   // Index jour ISO → congés couvrant ce jour, construit une fois par mois affiché.
   const byDay = useMemo(() => {
-    const map = new Map<string, LeaveRequestDetail[]>();
+    const map = new Map<string, CalendarLeave[]>();
     for (const iso of cells) {
       if (!iso) continue;
-      const hits = visible.filter((l) => l.start_date <= iso && l.end_date >= iso);
+      const hits = visible.filter((l) => l.date_start <= iso && l.date_end >= iso);
       if (hits.length > 0) map.set(iso, hits);
     }
     return map;
@@ -96,7 +121,7 @@ export function LeaveCalendarPage() {
 
   const legend = useMemo(() => {
     const byCode = new Map<string, string>();
-    for (const l of visible) byCode.set(l.leave_type_code, l.leave_type_label);
+    for (const l of visible) byCode.set(l.leave_type.code, l.leave_type.label);
     return [...byCode.entries()].sort((a, b) => a[1].localeCompare(b[1]));
   }, [visible]);
 
@@ -119,11 +144,21 @@ export function LeaveCalendarPage() {
             Affichage
             <select
               value={scope}
-              onChange={(e) => setScope(e.target.value as 'all' | 'mine')}
+              onChange={(e) => setScope(e.target.value as Scope)}
               style={styles.select}
             >
-              <option value="all">Toute l'équipe</option>
               <option value="mine">Mes congés</option>
+              <option value="all">Toute l'entreprise</option>
+              {managers.length > 0 && (
+                <optgroup label="Équipes">
+                  {managers.map((m) => (
+                    <option key={m.id} value={`team:${m.id}`}>
+                      Équipe {personName(m.first_name, m.last_name, `#${m.id}`)}
+                      {m.id === user?.id ? ' (la mienne)' : ''}
+                    </option>
+                  ))}
+                </optgroup>
+              )}
             </select>
           </label>
           <div className="cal-nav" style={styles.nav}>
@@ -188,20 +223,35 @@ export function LeaveCalendarPage() {
                     )}
                   </div>
                   <div style={styles.entries}>
-                    {dayLeaves.slice(0, 3).map((l) => (
-                      <button
-                        key={l.id}
-                        onClick={() => setSelectedId(l.id)}
-                        title={`${l.user_first_name} ${l.user_last_name} — ${l.leave_type_label} (${formatDays(l.days_requested)})`}
-                        className="cal-entry"
-                        style={{
-                          ...styles.entry,
-                          background: leaveTypeColor(l.leave_type_code),
-                        }}
-                      >
-                        {l.user_first_name || l.user_email}
-                      </button>
-                    ))}
+                    {dayLeaves.slice(0, 3).map((l) => {
+                      const name = personName(
+                        l.user_first_name,
+                        l.user_last_name,
+                        `Salarié #${l.user_id}`,
+                      );
+                      const openable = canOpen(l);
+                      return (
+                        <button
+                          key={l.id}
+                          type="button"
+                          onClick={openable ? () => setSelectedId(l.id) : undefined}
+                          aria-disabled={!openable}
+                          title={
+                            `${name} — ${l.leave_type.label} (${formatDays(l.days_requested)})` +
+                            (l.status === 'approved_manager' ? ' — en attente de confirmation RH' : '')
+                          }
+                          className="cal-entry"
+                          style={{
+                            ...styles.entry,
+                            background: leaveTypeColor(l.leave_type.code),
+                            ...(openable ? {} : styles.entryStatic),
+                            ...(l.status === 'approved_manager' ? styles.entryPending : {}),
+                          }}
+                        >
+                          {l.user_first_name || name}
+                        </button>
+                      );
+                    })}
                     {dayLeaves.length > 3 && (
                       <span className="cal-more" style={styles.more}>+{dayLeaves.length - 3}</span>
                     )}
@@ -322,6 +372,10 @@ const styles: Record<string, React.CSSProperties> = {
     textOverflow: 'ellipsis',
     whiteSpace: 'nowrap',
   },
+  // Détail réservé au salarié concerné et aux valideurs (GET /api/leaves/:id).
+  entryStatic: { cursor: 'default' },
+  // Validé par le manager, pas encore confirmé par la RH.
+  entryPending: { opacity: 0.6 },
   more: { fontSize: 10, color: '#9a9aa0' },
   muted: { color: '#9a9aa0', marginTop: 12 },
   error: {

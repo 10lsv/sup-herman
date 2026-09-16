@@ -45,6 +45,15 @@ const createLeaveSchema = z
     path: ['type'],
   });
 
+const calendarQuerySchema = z
+  .object({
+    from: z.string().regex(DATE_RE),
+    to: z.string().regex(DATE_RE),
+    // Équipe = les salariés rattachés à ce manager, plus le manager lui-même.
+    team: z.coerce.number().int().positive().optional(),
+  })
+  .refine((v) => v.from <= v.to, { message: 'from doit précéder to', path: ['to'] });
+
 const updateStatusSchema = z.object({
   status: z.enum(['approved', 'rejected', 'cancelled']),
   comment: z.string().trim().max(5000).optional(),
@@ -234,6 +243,53 @@ leavesRouter.get(
     }
   },
 );
+
+// ---------------------------------------------------------------------------
+// GET /api/leaves/calendar?from=YYYY-MM-DD&to=YYYY-MM-DD[&team=<manager_id>]
+//   Calendrier global, ouvert à tout utilisateur connecté (sujet xFINT2).
+//   Uniquement les congés validés qui chevauchent la période, et une projection
+//   volontairement réduite : ni motif, ni commentaire, ni justificatif, ni email.
+//   Déclaré avant /:id.
+// ---------------------------------------------------------------------------
+
+leavesRouter.get('/calendar', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const parsed = calendarQuerySchema.safeParse(req.query);
+    if (!parsed.success) {
+      return res
+        .status(400)
+        .json({ error: 'Invalid query', details: parsed.error.flatten() });
+    }
+    const { from, to, team } = parsed.data;
+
+    // `manager_id` est le manager de rattachement du salarié (users), pas le
+    // valideur de la demande (leave_requests.manager_id).
+    const { rows } = await pool.query(
+      `SELECT r.id,
+              r.user_id,
+              u.first_name AS user_first_name,
+              u.last_name  AS user_last_name,
+              u.manager_id,
+              json_build_object('code', t.code, 'label', t.label) AS leave_type,
+              r.start_date AS date_start,
+              r.end_date   AS date_end,
+              r.days_requested,
+              r.status
+         FROM leave_requests r
+         JOIN leave_types t ON t.id = r.leave_type_id
+         JOIN users u       ON u.id = r.user_id
+        WHERE r.status IN ('approved_manager', 'approved_hr', 'approved')
+          AND r.start_date <= $2
+          AND r.end_date   >= $1
+          AND ($3::integer IS NULL OR u.manager_id = $3 OR u.id = $3)
+        ORDER BY r.start_date, r.id`,
+      [from, to, team ?? null],
+    );
+    res.json(rows);
+  } catch (err) {
+    next(err);
+  }
+});
 
 // ---------------------------------------------------------------------------
 // GET /api/leaves/balance/:user_id — soldes par type, pour l'année en cours

@@ -279,9 +279,14 @@ Nouvelle demande, Calendrier, À valider (manager, RH) et Gestion RH (RH).
     Le serveur les revérifie tous.
   - Justificatif attendu pour maladie, formation et événement familial. Formats
     acceptés : JPEG, PNG, WebP, HEIC, PDF, 10 Mo par fichier, 10 fichiers.
-- **Calendrier** (`/leaves/calendar`) — vue mensuelle de l'équipe, une couleur
-  par type de congé. Seuls les congés définitivement validés y figurent. Un
-  sélecteur permet de n'afficher que les siens.
+- **Calendrier** (`/leaves/calendar`) — vue mensuelle, ouverte à tous les
+  rôles, une couleur par type de congé. Y figurent les congés validés : ceux
+  confirmés par la RH, et ceux validés par le manager en attente de la RH
+  (affichés estompés). Le sélecteur « Affichage » propose « Mes congés »,
+  « Toute l'entreprise » et une entrée par équipe (un manager et les salariés
+  qui lui sont rattachés) ; un manager arrive sur son équipe. Le détail d'un
+  congé ne s'ouvre que sur ses propres demandes, ou pour un manager, la RH et
+  un admin.
 - **Détail d'une demande** — statut, période, jours, motif, commentaires du
   manager et de la RH, justificatifs, et le bouton d'annulation.
 
@@ -345,6 +350,7 @@ exception signalée, `/api/users` exigent un en-tête
 |---|---|---|---|
 | `GET` | `/api/leaves/mine` | connecté | Ses propres demandes |
 | `GET` | `/api/leaves/all` | manager, RH, admin | Toutes les demandes |
+| `GET` | `/api/leaves/calendar` | connecté | Congés validés d'une période, pour le calendrier |
 | `POST` | `/api/leaves` | connecté | Création, statut `submitted` d'emblée |
 | `GET` | `/api/leaves/:id` | propriétaire ou rôle valideur | Détail + justificatifs |
 | `PATCH` | `/api/leaves/:id/status` | valideurs ; annulation aussi au demandeur | Décision |
@@ -367,6 +373,35 @@ exception signalée, `/api/users` exigent un en-tête
 
 Le type se désigne par son code (`PAID`, `RTT`, `SICK`, `FAMILY`, `UNPAID`,
 `TRAINING`) ou par `leave_type_id`. Les jours sont calculés par le serveur.
+
+**`GET /api/leaves/calendar?from=2026-09-01&to=2026-09-30&team=1`**
+
+`from` et `to` sont obligatoires (`YYYY-MM-DD`, `from` ≤ `to`) ; la réponse
+contient les congés qui chevauchent la période. `team` est facultatif : l'id
+d'un manager, qui restreint aux salariés rattachés à ce manager et au manager
+lui-même. Seuls les statuts `approved_manager`, `approved_hr` et `approved`
+sont renvoyés, avec une projection réduite — jamais de motif, de commentaire,
+de justificatif ni d'email :
+
+```json
+[
+  {
+    "id": 1,
+    "user_id": 2,
+    "user_first_name": "Émile",
+    "user_last_name": "Employé",
+    "manager_id": 1,
+    "leave_type": { "code": "PAID", "label": "Congés payés" },
+    "date_start": "2026-09-14",
+    "date_end": "2026-09-18",
+    "days_requested": "5.00",
+    "status": "approved_hr"
+  }
+]
+```
+
+`manager_id` est le manager de rattachement du salarié, pas le valideur de la
+demande.
 
 **`PATCH /api/leaves/:id/status`**
 
@@ -392,6 +427,7 @@ manager donne `approved_manager`, le même posé par la RH donne `approved_hr`.
 | Méthode | Route | Accès | Description |
 |---|---|---|---|
 | `GET` | `/api/users` | RH, admin | Annuaire avec état d'activation et soldes |
+| `GET` | `/api/users/managers` | connecté | Managers actifs (id, prénom, nom), pour le filtre par équipe |
 | `POST` | `/api/users` | manager, RH, admin | Crée un compte, renvoie le jeton d'activation |
 | `PATCH` | `/api/users/:id` | RH, admin | Identité, email, rôle, rattachement, activation |
 | `PATCH` | `/api/users/:id/password` | trois modes, voir ci-dessous | Définit un mot de passe |

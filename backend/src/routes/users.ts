@@ -215,6 +215,25 @@ usersRouter.patch(
 usersRouter.use(authenticate);
 
 // ---------------------------------------------------------------------------
+// GET /api/users/managers — managers actifs, pour filtrer le calendrier par
+//   équipe. Ouvert à tout utilisateur connecté : id et nom uniquement.
+// ---------------------------------------------------------------------------
+
+usersRouter.get('/managers', async (_req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { rows } = await pool.query<Pick<User, 'id' | 'first_name' | 'last_name'>>(
+      `SELECT id, first_name, last_name
+         FROM users
+        WHERE role = 'manager' AND is_active
+        ORDER BY last_name, first_name, id`,
+    );
+    res.json(rows);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ---------------------------------------------------------------------------
 // GET /api/users — annuaire + soldes de l'année (RH)
 // ---------------------------------------------------------------------------
 
