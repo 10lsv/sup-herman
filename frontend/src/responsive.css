@@ -20,9 +20,10 @@ textarea {
   max-width: 100%;
 }
 
-/* Bouton hamburger et voile du menu : n'existent que sur mobile. */
+/* Bouton hamburger, voile du menu et icône de déconnexion : mobile seulement. */
 .app-menu-toggle,
-.app-backdrop {
+.app-backdrop,
+.app-logout-icon {
   display: none;
 }
 
@@ -65,13 +66,46 @@ textarea {
     cursor: pointer;
   }
 
+  /* Le nom de l'app garde sa largeur ; c'est la zone de droite qui cède. */
   .app-brand {
-    flex: 1;
+    flex: 1 0 auto;
+    font-size: 16px !important;
+  }
+
+  .app-nav-right {
+    min-width: 0;
+    gap: 8px !important;
+  }
+
+  .app-user-info {
+    min-width: 0;
   }
 
   /* Le rôle suffit à situer la session, le nom ne tient pas à 375 px. */
   .app-user-name {
     display: none;
+  }
+
+  .app-role-tag {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .app-logout {
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    padding: 6px 8px !important;
+  }
+
+  .app-logout-label {
+    display: none;
+  }
+
+  .app-logout-icon {
+    display: block;
   }
 
   .app-sidebar {
@@ -119,9 +153,15 @@ textarea {
 
   /* --- En-têtes de page -------------------------------------------------- */
 
+  /* Titre au-dessus, action en dessous, chacun sur toute la largeur. */
   .page-header {
-    flex-wrap: wrap;
-    gap: 8px 16px !important;
+    flex-direction: column;
+    align-items: stretch !important;
+    gap: 10px !important;
+  }
+
+  .page-header > a {
+    text-align: center;
   }
 
   .page-header h1 {

@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { getSessionUser } from '../../api';
 import type { UserRole } from '../../types';
 
@@ -10,8 +10,14 @@ const ROLE_LABEL: Record<UserRole, string> = {
   admin: 'Admin',
 };
 
+/** État de navigation accepté par /profile, posé par SetPasswordPage. */
+export interface ProfileLocationState {
+  notice?: string;
+}
+
 export function ProfilePage() {
   const user = getSessionUser();
+  const notice = (useLocation().state as ProfileLocationState | null)?.notice;
 
   // ProtectedRoute garantit la session, mais le localStorage peut être vidé
   // entre-temps : on affiche un message plutôt que de planter.
@@ -29,6 +35,12 @@ export function ProfilePage() {
   return (
     <section>
       <h1 style={styles.title}>Mon profil</h1>
+
+      {notice && (
+        <div role="status" style={styles.success}>
+          {notice}
+        </div>
+      )}
 
       <dl className="detail-grid" style={styles.grid}>
         <dt style={styles.dt}>Email</dt>
@@ -68,6 +80,16 @@ const styles: Record<string, React.CSSProperties> = {
     fontWeight: 600,
   },
   muted: { color: '#9a9aa0' },
+  success: {
+    maxWidth: 480,
+    boxSizing: 'border-box',
+    padding: '8px 12px',
+    marginBottom: 16,
+    borderRadius: 6,
+    background: '#e6f4ea',
+    color: '#1e7c3a',
+    fontSize: 13,
+  },
 };
 
 export default ProfilePage;

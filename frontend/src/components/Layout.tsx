@@ -95,17 +95,40 @@ export function Layout({ children }: LayoutProps) {
           {menuOpen ? '×' : '☰'}
         </button>
         <div className="app-brand" style={styles.brand}>sup-herman</div>
-        <div style={styles.navRight}>
+        <div className="app-nav-right" style={styles.navRight}>
           {user && (
             <>
-              <span style={styles.userInfo}>
+              <span className="app-user-info" style={styles.userInfo}>
                 <span className="app-user-name">
                   {user.first_name} {user.last_name}
                 </span>
-                <span style={styles.roleTag}>{ROLE_LABEL[user.role]}</span>
+                <span className="app-role-tag" style={styles.roleTag}>{ROLE_LABEL[user.role]}</span>
               </span>
-              <button onClick={handleLogout} style={styles.logout}>
-                Déconnexion
+              <button
+                onClick={handleLogout}
+                className="app-logout"
+                aria-label="Déconnexion"
+                title="Déconnexion"
+                style={styles.logout}
+              >
+                <span className="app-logout-label">Déconnexion</span>
+                {/* Remplace le libellé sous 768 px. */}
+                <svg
+                  className="app-logout-icon"
+                  width="18"
+                  height="18"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-hidden="true"
+                >
+                  <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                  <path d="M16 17l5-5-5-5" />
+                  <path d="M21 12H9" />
+                </svg>
               </button>
             </>
           )}
@@ -168,7 +191,7 @@ const styles: Record<string, React.CSSProperties> = {
     background: '#0b5fff',
     color: '#fff',
   },
-  brand: { fontWeight: 700, fontSize: 18 },
+  brand: { fontWeight: 700, fontSize: 18, whiteSpace: 'nowrap' },
   navRight: { display: 'flex', alignItems: 'center', gap: 16 },
   userInfo: { display: 'flex', alignItems: 'center', gap: 8, fontSize: 14 },
   roleTag: {

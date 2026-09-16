@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { API_BASE, getSessionUser } from '../../api';
+import type { ProfileLocationState } from '../xfint1/ProfilePage';
 import type { ApiError, UpdatePasswordRequest } from '../../types';
 
 const MIN_LENGTH = 8;
@@ -68,12 +69,17 @@ export function SetPasswordPage() {
         throw new Error(payload?.error ?? `Requête échouée (${res.status})`);
       }
 
-      setDone(true);
-      // Le mot de passe a changé : la session en cours n'est plus cohérente.
       if (!isActivation) {
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
+        // Changement depuis une session ouverte : on la conserve et on revient
+        // au profil, qui affiche la confirmation transmise dans l'état.
+        const state: ProfileLocationState = {
+          notice: 'Votre mot de passe a été modifié.',
+        };
+        navigate('/profile', { replace: true, state });
+        return;
       }
+
+      setDone(true);
       setTimeout(() => navigate('/login', { replace: true }), 1500);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erreur inconnue');
@@ -99,6 +105,12 @@ export function SetPasswordPage() {
   return (
     <main style={styles.page}>
       <section className="auth-card" style={styles.card}>
+        {/* L'activation se fait hors session : pas de profil où revenir. */}
+        {!isActivation && (
+          <Link to="/profile" style={styles.back}>
+            ← Retour au profil
+          </Link>
+        )}
         <h1 style={styles.title}>
           {isActivation ? 'Activer mon compte' : 'Changer mon mot de passe'}
         </h1>
@@ -205,6 +217,7 @@ const styles: Record<string, React.CSSProperties> = {
     display: 'grid',
     gap: 12,
   },
+  back: { justifySelf: 'start', fontSize: 13, color: '#0b5fff', textDecoration: 'none' },
   title: { margin: 0, fontSize: 20 },
   form: { display: 'grid', gap: 14, marginTop: 4 },
   label: { display: 'flex', flexDirection: 'column', gap: 6, fontSize: 14 },
