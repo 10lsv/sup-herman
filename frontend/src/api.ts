@@ -1,7 +1,7 @@
 // Petit client HTTP partagé : base URL, en-tête Bearer, gestion d'erreur
 // uniforme. Évite de dupliquer le fetch/localStorage dans chaque page.
 
-import type { ApiError, User } from './types';
+import type { ApiError, CreatedUser, User } from './types';
 
 export const API_BASE =
   (import.meta.env.VITE_API_URL as string | undefined) ?? 'http://localhost:3000';
@@ -18,6 +18,14 @@ export function getSessionUser(): User | null {
   } catch {
     return null;
   }
+}
+
+/**
+ * Lien d'activation d'un compte tout juste créé. Le back n'en garde que le
+ * hash : il n'est plus jamais affichable ensuite.
+ */
+export function inviteLinkFor(user: CreatedUser): string {
+  return `${window.location.origin}/set-password?user=${user.id}&token=${user.invite_token}`;
 }
 
 async function toError(res: Response): Promise<Error> {

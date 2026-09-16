@@ -6,13 +6,13 @@ import { pool } from '../db';
 import {
   authenticate,
   authenticateOptional,
-  requireManager,
   requireRole,
 } from '../middleware/auth';
 import { toPublicUser } from '../lib/publicUser';
 import type {
   LeaveBalanceSummary,
   User,
+  UserRole,
   UserWithBalances,
 } from '../types';
 
@@ -29,6 +29,8 @@ const INVITE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 const createUserSchema = z.object({
   email: z.string().email().max(255),
   role: z.enum(['employee', 'manager', 'accounting', 'hr', 'admin']),
+  // Manager responsable (xFINT2 : défini par la RH). Absent ou null = aucun.
+  manager_id: z.union([z.coerce.number().int().positive(), z.null()]).optional(),
 });
 
 /**
@@ -38,6 +40,28 @@ const createUserSchema = z.object({
  * rendrait tout compte comptable non éditable.
  */
 const ASSIGNABLE_ROLES = ['employee', 'manager', 'accounting', 'hr', 'admin'] as const;
+
+/**
+ * Rôles qu'un créateur peut attribuer via POST /api/users :
+ *   • manager — spec xFINT1 p. 6 (salariés, managers, comptabilité) ;
+ *   • hr      — spec xFINT2 p. 7 (salariés, managers, RH) ;
+ *   • admin   — tous.
+ */
+const CREATABLE_ROLES: Record<UserRole, readonly UserRole[]> = {
+  manager: ['employee', 'manager', 'accounting'],
+  hr: ['employee', 'manager', 'hr'],
+  admin: ASSIGNABLE_ROLES,
+  employee: [],
+  accounting: [],
+};
+
+const ROLE_LABEL: Record<UserRole, string> = {
+  employee: 'salarié',
+  manager: 'manager',
+  accounting: 'comptabilité',
+  hr: 'RH',
+  admin: 'admin',
+};
 
 const updateUserSchema = z
   .object({
@@ -266,14 +290,14 @@ usersRouter.get(
 );
 
 // ---------------------------------------------------------------------------
-// POST /api/users — provisionnement d'un compte par un manager
+// POST /api/users — provisionnement d'un compte par un manager, la RH ou un admin
 //   Aucun mot de passe n'est fourni : la réponse porte un jeton d'activation à
-//   usage unique, affiché une seule fois, que le manager transmet au salarié.
+//   usage unique, affiché une seule fois, que le créateur transmet au salarié.
 // ---------------------------------------------------------------------------
 
 usersRouter.post(
   '/',
-  requireManager,
+  requireRole('manager', 'hr', 'admin'),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       if (!req.user) return res.status(401).json({ error: 'Unauthenticated' });
@@ -287,9 +311,39 @@ usersRouter.post(
       const { role } = parsed.data;
       const email = parsed.data.email.toLowerCase();
 
-      // Rattachement hiérarchique : seuls les comptes `manager` sont rattachés
-      // au manager créateur, les autres restent sans manager_id.
-      const managerId = role === 'manager' ? req.user.id : null;
+      const allowed = CREATABLE_ROLES[req.user.role];
+      if (!allowed.includes(role)) {
+        return res.status(403).json({
+          error:
+            `Un compte ${ROLE_LABEL[req.user.role]} ne peut pas créer de compte ` +
+            `${ROLE_LABEL[role]}. Rôles autorisés : ` +
+            `${allowed.map((r) => ROLE_LABEL[r]).join(', ')}.`,
+        });
+      }
+
+      // Rattachement hiérarchique. Un manager_id explicite (y compris null)
+      // l'emporte ; sinon, comme avant, seul un compte `manager` est rattaché à
+      // son créateur — sauf si ce créateur est la RH, qui n'encadre personne.
+      const managerId =
+        parsed.data.manager_id !== undefined
+          ? parsed.data.manager_id
+          : role === 'manager' && req.user.role !== 'hr'
+            ? req.user.id
+            : null;
+
+      if (parsed.data.manager_id != null) {
+        const { rows: managers } = await pool.query<Pick<User, 'role' | 'is_active'>>(
+          'SELECT role, is_active FROM users WHERE id = $1',
+          [parsed.data.manager_id],
+        );
+        const manager = managers[0];
+        const isManager = manager?.role === 'manager' || manager?.role === 'admin';
+        if (!manager?.is_active || !isManager) {
+          return res
+            .status(400)
+            .json({ error: 'Manager responsable inconnu, inactif ou sans rôle manager' });
+        }
+      }
 
       const existing = await pool.query('SELECT 1 FROM users WHERE email = $1', [email]);
       if (existing.rowCount && existing.rowCount > 0) {

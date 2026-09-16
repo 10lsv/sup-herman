@@ -1,7 +1,13 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
-import { apiFetch, getSessionUser } from '../../api';
+import { apiFetch, getSessionUser, inviteLinkFor } from '../../api';
 import { leaveTypeColor } from '../../leaveLabels';
-import type { LeaveBalanceSummary, UserWithBalances, UserRole } from '../../types';
+import type {
+  CreatedUser,
+  CreateUserRequest,
+  LeaveBalanceSummary,
+  UserWithBalances,
+  UserRole,
+} from '../../types';
 
 const ROLE_LABEL: Record<UserRole, string> = {
   employee: 'Salarié',
@@ -23,7 +29,11 @@ const ASSIGNABLE_ROLES: UserRole[] = [
   'admin',
 ];
 
+/** Rôles que la RH peut attribuer à la création (spec xFINT2 p. 7). */
+const HR_CREATABLE_ROLES: UserRole[] = ['employee', 'manager', 'hr'];
+
 type Dialog =
+  | { kind: 'create' }
   | { kind: 'balance'; user: UserWithBalances }
   | { kind: 'password'; user: UserWithBalances }
   | { kind: 'edit'; user: UserWithBalances };
@@ -92,7 +102,19 @@ export function LeaveHRPage() {
     <section>
       <header className="page-header" style={styles.header}>
         <h1 style={styles.title}>RH — utilisateurs et soldes</h1>
-        <span style={styles.count}>{users.length} compte(s)</span>
+        <div className="page-header-actions" style={styles.headerActions}>
+          <span style={styles.count}>{users.length} compte(s)</span>
+          <button
+            type="button"
+            onClick={() => {
+              setNotice(null);
+              setDialog({ kind: 'create' });
+            }}
+            style={styles.primary}
+          >
+            + Créer un utilisateur
+          </button>
+        </div>
       </header>
 
       {error && <div style={styles.error}>{error}</div>}
@@ -223,6 +245,18 @@ export function LeaveHRPage() {
         </div>
       )}
 
+      {dialog?.kind === 'create' && (
+        <CreateUserDialog
+          users={users}
+          onClose={() => setDialog(null)}
+          // La modale reste ouverte pour afficher le lien d'activation ; la
+          // liste, elle, se met à jour derrière.
+          onCreated={(created) => {
+            setNotice(`Compte créé pour ${created.email}.`);
+            void load();
+          }}
+        />
+      )}
       {dialog?.kind === 'balance' && (
         <BalanceDialog
           user={dialog.user}
@@ -259,6 +293,147 @@ export function LeaveHRPage() {
         />
       )}
     </section>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Modale : création d'un compte
+// ---------------------------------------------------------------------------
+
+function CreateUserDialog({
+  users,
+  onClose,
+  onCreated,
+}: {
+  users: UserWithBalances[];
+  onClose: () => void;
+  onCreated: (user: CreatedUser) => void;
+}) {
+  const [email, setEmail] = useState('');
+  const [role, setRole] = useState<UserRole>('employee');
+  const [managerId, setManagerId] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [created, setCreated] = useState<CreatedUser | null>(null);
+  const [copied, setCopied] = useState(false);
+
+  const managers = users.filter((u) => u.role === 'manager' && u.is_active);
+
+  async function handleSubmit(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setError(null);
+    setSaving(true);
+    try {
+      const body: CreateUserRequest = {
+        email: email.trim().toLowerCase(),
+        role,
+        manager_id: managerId === '' ? null : Number(managerId),
+      };
+      const user = await apiFetch<CreatedUser>('/api/users', { method: 'POST', body });
+      setCreated(user);
+      onCreated(user);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erreur inconnue');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  if (created) {
+    const link = inviteLinkFor(created);
+    return (
+      <Dialog title="Compte créé" onClose={onClose}>
+        <div style={styles.form}>
+          <p style={styles.inviteText}>
+            Transmettez ce lien d'activation à {created.email} : il y choisira son
+            mot de passe. <strong>Il n'est affiché qu'une fois</strong> et expire
+            le {new Date(created.invite_expires_at).toLocaleDateString('fr-FR')}.
+          </p>
+          <code style={styles.inviteLink}>{link}</code>
+          <div className="modal-actions" style={styles.actionRow}>
+            <button
+              type="button"
+              onClick={() => {
+                void navigator.clipboard
+                  .writeText(link)
+                  .then(() => setCopied(true))
+                  .catch(() => setCopied(false));
+              }}
+              style={styles.primary}
+            >
+              {copied ? 'Lien copié' : 'Copier le lien'}
+            </button>
+            <button type="button" onClick={onClose} style={styles.secondary}>
+              Fermer
+            </button>
+          </div>
+        </div>
+      </Dialog>
+    );
+  }
+
+  return (
+    <Dialog title="Créer un utilisateur" onClose={onClose}>
+      <form onSubmit={handleSubmit} style={styles.form}>
+        <label style={styles.label}>
+          Email *
+          <input
+            type="email"
+            required
+            maxLength={255}
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="prenom.nom@exemple.fr"
+            style={styles.input}
+          />
+        </label>
+
+        <div className="form-row" style={styles.fieldRow}>
+          <label style={styles.label}>
+            Rôle *
+            <select
+              required
+              value={role}
+              onChange={(e) => setRole(e.target.value as UserRole)}
+              style={styles.input}
+            >
+              {HR_CREATABLE_ROLES.map((r) => (
+                <option key={r} value={r}>
+                  {r === 'employee' ? 'Employé' : ROLE_LABEL[r]}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label style={styles.label}>
+            Manager responsable
+            <select
+              value={managerId}
+              onChange={(e) => setManagerId(e.target.value)}
+              style={styles.input}
+            >
+              <option value="">Aucun</option>
+              {managers.map((m) => (
+                <option key={m.id} value={m.id}>
+                  {`${m.first_name} ${m.last_name}`.trim() || m.email}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+
+        {error && <div style={styles.error}>{error}</div>}
+
+        <div className="modal-actions" style={styles.actionRow}>
+          <button type="submit" disabled={saving} style={styles.primary}>
+            {saving ? 'Création…' : 'Créer le compte'}
+          </button>
+          <button type="button" onClick={onClose} style={styles.secondary}>
+            Annuler
+          </button>
+        </div>
+      </form>
+    </Dialog>
   );
 }
 
@@ -668,6 +843,7 @@ const styles: Record<string, React.CSSProperties> = {
   },
   title: { margin: 0, fontSize: 22 },
   count: { fontSize: 13, color: '#9a9aa0' },
+  headerActions: { display: 'flex', alignItems: 'center', gap: 16 },
   tableWrap: { overflowX: 'auto', border: '1px solid #e0e0e5', borderRadius: 8 },
   table: { width: '100%', borderCollapse: 'collapse', fontSize: 14 },
   th: {
@@ -800,6 +976,16 @@ const styles: Record<string, React.CSSProperties> = {
     cursor: 'pointer',
   },
   muted: { margin: 0, color: '#9a9aa0', fontSize: 13 },
+  inviteText: { margin: 0, fontSize: 14 },
+  inviteLink: {
+    display: 'block',
+    padding: '10px 12px',
+    background: '#f5f5f7',
+    border: '1px solid #e0e0e5',
+    borderRadius: 6,
+    fontSize: 12,
+    wordBreak: 'break-all',
+  },
   success: {
     padding: '8px 12px',
     borderRadius: 6,

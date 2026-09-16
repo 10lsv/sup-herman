@@ -164,6 +164,10 @@ textarea {
     text-align: center;
   }
 
+  .page-header-actions {
+    justify-content: space-between;
+  }
+
   .page-header h1 {
     font-size: 20px !important;
   }

@@ -97,10 +97,15 @@ export interface CreateExpenseRequest {
 /** Rôles provisionnables depuis l'écran d'administration. */
 export type CreateUserRole = Extract<UserRole, 'employee' | 'manager' | 'accounting'>;
 
-/** Corps de POST /api/users (création de compte par un manager). */
+/**
+ * Corps de POST /api/users. Les rôles acceptés dépendent du créateur :
+ * manager → employee/manager/accounting, hr → employee/manager/hr, admin → tous.
+ */
 export interface CreateUserRequest {
   email: string;
-  role: CreateUserRole;
+  role: UserRole;
+  /** Manager responsable ; absent ou null = aucun. */
+  manager_id?: number | null;
 }
 
 /** Décision envoyée à PATCH /api/expenses/:id/status. */

@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react';
-import { apiFetch } from '../../api';
+import { apiFetch, inviteLinkFor } from '../../api';
 import type { CreatedUser, CreateUserRequest, CreateUserRole } from '../../types';
 
 const ROLE_OPTIONS: { value: CreateUserRole; label: string }[] = [
@@ -17,11 +17,9 @@ export function AdminUsersPage() {
   const [submitting, setSubmitting] = useState(false);
 
   // Le compte est créé sans mot de passe : ce lien est le seul moyen pour le
-  // salarié d'en choisir un. Le back n'en garde que le hash, il ne sera plus
-  // jamais affiché — à défaut, la RH devra passer par une réinitialisation.
-  const inviteLink = created
-    ? `${window.location.origin}/set-password?user=${created.id}&token=${created.invite_token}`
-    : null;
+  // salarié d'en choisir un — à défaut, la RH devra passer par une
+  // réinitialisation.
+  const inviteLink = created ? inviteLinkFor(created) : null;
 
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
