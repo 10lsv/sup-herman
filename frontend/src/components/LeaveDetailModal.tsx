@@ -222,6 +222,30 @@ export function LeaveDetailModal({ leaveId, onClose, onUpdated }: LeaveDetailMod
 
                 <dt style={styles.dt}>Demandée le</dt>
                 <dd style={styles.dd}>{formatLeaveDate(leave.submitted_at)}</dd>
+
+                {/* Déduit du statut plutôt que des horodatages seuls : un refus
+                    ou une annulation réécrit aussi manager_action_at /
+                    hr_action_at, qui ne prouvent alors pas une validation. */}
+                {(leave.status === 'approved_manager' || isApprovedLeave(leave.status)) && (
+                  <>
+                    <dt style={styles.dt}>Validation</dt>
+                    <dd style={styles.ddStack}>
+                      <span>
+                        Validée par le manager
+                        {leave.manager_action_at &&
+                          ` le ${formatLeaveDate(leave.manager_action_at)}`}
+                        {leave.status === 'approved_manager' &&
+                          ' — en attente de confirmation RH'}
+                      </span>
+                      {isApprovedLeave(leave.status) && (
+                        <span>
+                          Confirmée par la RH
+                          {leave.hr_action_at && ` le ${formatLeaveDate(leave.hr_action_at)}`}
+                        </span>
+                      )}
+                    </dd>
+                  </>
+                )}
               </dl>
 
               <section style={styles.section}>
@@ -410,6 +434,7 @@ const styles: Record<string, React.CSSProperties> = {
   },
   dt: { color: '#606066' },
   dd: { margin: 0, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' },
+  ddStack: { margin: 0, display: 'grid', gap: 2 },
   dot: { width: 10, height: 10, borderRadius: '50%', display: 'inline-block' },
   section: { display: 'grid', gap: 6 },
   h3: { margin: 0, fontSize: 14, color: '#606066', fontWeight: 600 },

@@ -4,14 +4,15 @@
 import type { LeaveStatus } from './types';
 
 /**
- * Libellés du sujet xFINT2 : En attente, Validée, Refusée, Annulée. Une demande
- * reste « En attente » tant que la RH n'a pas confirmé, quelle que soit l'étape
- * interne (`submitted` puis `approved_manager`).
+ * Libellés du sujet xFINT2 : En attente, Validée, Refusée, Annulée. Les deux
+ * étapes de validation s'affichent « Validée » et se distinguent par la couleur
+ * du badge (bleu après le manager, vert après la RH) ; la modale de détail
+ * précise l'étape atteinte.
  */
 export const LEAVE_STATUS_LABEL: Record<LeaveStatus, string> = {
   draft: 'En attente',
   submitted: 'En attente',
-  approved_manager: 'En attente',
+  approved_manager: 'Validée',
   approved_hr: 'Validée',
   approved: 'Validée',
   rejected: 'Refusée',

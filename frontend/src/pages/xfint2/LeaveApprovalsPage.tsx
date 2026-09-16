@@ -22,15 +22,15 @@ const PENDING_BY_ROLE: Partial<Record<UserRole, LeaveStatus[]>> = {
 };
 
 /**
- * Filtre par libellé affiché : plusieurs statuts internes partagent le même
- * (`submitted` et `approved_manager` sont tous deux « En attente »).
+ * Options du filtre Statut. Les deux étapes de validation partagent le libellé
+ * « Validée » dans les badges : le filtre, lui, doit les séparer.
  */
-const STATUS_FILTERS: string[] = [
-  ...new Set(
-    (['submitted', 'approved_manager', 'approved_hr', 'rejected', 'cancelled'] as const).map(
-      (s) => LEAVE_STATUS_LABEL[s],
-    ),
-  ),
+const STATUS_FILTERS: { value: string; label: string; statuses: LeaveStatus[] }[] = [
+  { value: 'pending', label: 'En attente', statuses: ['submitted'] },
+  { value: 'manager', label: 'Validée (manager)', statuses: ['approved_manager'] },
+  { value: 'hr', label: 'Validée (RH)', statuses: ['approved_hr', 'approved'] },
+  { value: 'rejected', label: 'Refusée', statuses: ['rejected'] },
+  { value: 'cancelled', label: 'Annulée', statuses: ['cancelled'] },
 ];
 
 export function LeaveApprovalsPage() {
@@ -91,7 +91,10 @@ export function LeaveApprovalsPage() {
         if (l.user_id === user?.id) return false;
       }
       if (employee !== 'all' && l.user_email !== employee) return false;
-      if (status !== 'all' && LEAVE_STATUS_LABEL[l.status] !== status) return false;
+      if (status !== 'all') {
+        const option = STATUS_FILTERS.find((f) => f.value === status);
+        if (!option?.statuses.includes(l.status)) return false;
+      }
       if (type !== 'all' && l.leave_type_code !== type) return false;
       return true;
     });
@@ -149,9 +152,9 @@ export function LeaveApprovalsPage() {
             style={styles.select}
           >
             <option value="all">Tous</option>
-            {STATUS_FILTERS.map((label) => (
-              <option key={label} value={label}>
-                {label}
+            {STATUS_FILTERS.map((f) => (
+              <option key={f.value} value={f.value}>
+                {f.label}
               </option>
             ))}
           </select>

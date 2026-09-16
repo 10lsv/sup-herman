@@ -215,15 +215,19 @@ développement et à la démonstration.
 
 L'interface affiche les libellés du sujet :
 
-| Libellé affiché | Statuts internes |
-|---|---|
-| En attente | `submitted`, `approved_manager` — la demande attend le manager, puis la RH |
-| Validée | `approved_hr` |
-| Refusée | `rejected` |
-| Annulée | `cancelled` |
+| Libellé affiché | Badge | Statut interne |
+|---|---|---|
+| En attente | orange | `submitted` — la demande attend le manager |
+| Validée | bleu | `approved_manager` — validée par le manager, en attente de confirmation RH |
+| Validée | vert | `approved_hr` — confirmée par la RH, les jours sont décomptés |
+| Refusée | rouge | `rejected` |
+| Annulée | gris | `cancelled` |
 
-Sur l'écran de validation, le filtre « Statut » porte sur ces libellés ; la case
-« À traiter par moi » isole les demandes qui attendent précisément votre étape.
+La modale de détail d'une demande validée précise l'étape atteinte : « Validée
+par le manager le … — en attente de confirmation RH », puis « Confirmée par la
+RH le … ». Sur l'écran de validation, le filtre « Statut » sépare les deux
+étapes (« Validée (manager) », « Validée (RH) ») ; la case « À traiter par moi »
+isole les demandes qui attendent précisément votre décision.
 
 Le demandeur peut annuler sa demande à tout moment tant qu'elle n'est pas close,
 y compris après validation RH : les jours lui sont alors restitués. Personne ne
