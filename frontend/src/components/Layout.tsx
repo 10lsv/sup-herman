@@ -62,6 +62,22 @@ export function Layout({ children }: LayoutProps) {
   // Tiroir de navigation, utilisé seulement sous 768 px (voir responsive.css).
   const [menuOpen, setMenuOpen] = useState(false);
 
+  // Le localStorage est partagé entre onglets : une connexion ou déconnexion
+  // ailleurs remplace le jeton que cet onglet envoie, sans toucher à ce qu'il
+  // affiche. On recharge pour réaligner l'écran sur la session réelle.
+  // L'événement n'est émis que dans les *autres* onglets ; `key` vaut null
+  // après un localStorage.clear().
+  useEffect(() => {
+    const onStorage = (e: StorageEvent) => {
+      if (e.storageArea !== localStorage) return;
+      if (e.key === null || e.key === 'token' || e.key === 'user') {
+        window.location.reload();
+      }
+    };
+    window.addEventListener('storage', onStorage);
+    return () => window.removeEventListener('storage', onStorage);
+  }, []);
+
   useEffect(() => {
     if (!menuOpen) return;
     const onKey = (e: KeyboardEvent) => {
