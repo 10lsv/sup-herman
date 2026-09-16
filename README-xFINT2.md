@@ -36,11 +36,16 @@ PostgreSQL jetable :
 
 ```bash
 docker run -d --name supherman-db \
-  -e POSTGRES_PASSWORD=<mot-de-passe> \
+  -e POSTGRES_PASSWORD=postgres \
   -e POSTGRES_DB=supherman \
   -p 5432:5432 \
   postgres:15
 ```
+
+Ces identifiants (`postgres` / `postgres`, base `supherman`) sont ceux de
+`backend/.env.example` : avec cette commande, l'exemple fonctionne sans
+retouche. Si le port 5432 est déjà pris, publier un autre port (`-p 5433:5432`)
+et le reporter dans `DATABASE_URL`.
 
 Aucune commande de migration à jouer à la main : au premier démarrage, le
 serveur applique `backend/src/database/schema.sql` si la base est vierge, puis
@@ -57,23 +62,37 @@ quatre derniers sont sans dotation : ils sont décomptés, jamais bloquants.
 
 ### `backend/.env`
 
+Le fichier n'est pas versionné. Le créer à partir de l'exemple fourni :
+
+```bash
+cp backend/.env.example backend/.env
+```
+
 | Variable | Obligatoire | Défaut | Rôle |
 |---|---|---|---|
 | `DATABASE_URL` | oui | — | Chaîne de connexion PostgreSQL |
-| `JWT_SECRET` | oui | — | Clé de signature des jetons. Le serveur refuse de démarrer sans elle |
+| `JWT_SECRET` | oui | — | Clé de signature des jetons (voir ci-dessous) |
 | `JWT_EXPIRES_IN` | non | `12h` | Durée de vie d'un jeton |
 | `PORT` | non | `3000` | Port d'écoute de l'API |
 | `CORS_ORIGIN` | non | `http://localhost:5173` | Origine autorisée pour le front |
+| `NODE_ENV` | non | — | Présente dans l'exemple, sans effet sur le serveur actuellement |
 
-Exemple :
+Contenu de `backend/.env.example` :
 
 ```ini
-DATABASE_URL=postgresql://postgres:<mot-de-passe>@localhost:5432/supherman
-JWT_SECRET=<chaîne-aléatoire-longue>
+DATABASE_URL=postgresql://postgres:postgres@localhost:5432/supherman
+JWT_SECRET=change-me-to-a-long-random-string
 JWT_EXPIRES_IN=12h
+NODE_ENV=development
 PORT=3000
 CORS_ORIGIN=http://localhost:5173
 ```
+
+`JWT_SECRET` : la valeur de l'exemple suffit pour un essai local, mais doit être
+remplacée ailleurs, par exemple par la sortie de `openssl rand -hex 32`.
+Attention, le serveur **démarre même sans cette variable** : l'absence ne se
+révèle qu'à la première connexion, qui échoue en `500` avec
+`JWT_SECRET is not defined in environment`.
 
 ### `frontend/.env`
 
@@ -94,6 +113,8 @@ supplémentaires ne sont pas gérés.
 
 ## 3. Lancer le projet
 
+Deux terminaux, qui restent ouverts :
+
 ```bash
 # Terminal 1 — API sur http://localhost:3000
 cd backend
@@ -104,13 +125,42 @@ cd frontend
 npm run dev
 ```
 
-Une fois le backend démarré au moins une fois, créer les comptes de
-démonstration :
+Au premier démarrage sur une base vierge, le terminal 1 doit afficher :
+
+```
+[pg] connected
+[schema] applying …/backend/src/database/schema.sql
+[schema] applied successfully
+[schema] migration 001_users_invite.sql applied
+[schema] migration 002_leaves_workflow.sql applied
+[schema] migration 003_leave_attachments_and_invites.sql applied
+[http] listening on http://localhost:3000
+```
+
+Point de contrôle : `curl http://localhost:3000/health` répond
+`{"ok":true,"uptime":…}`.
+
+La base est alors vide : aucun compte n'existe. Dans un troisième terminal,
+backend toujours lancé, créer les comptes de démonstration :
 
 ```bash
 cd backend
 npm run seed
 ```
+
+Le seed affiche une ligne par compte créé. Il est idempotent : un email déjà
+présent est ignoré, jamais écrasé.
+
+Vérifier la connexion :
+
+```bash
+curl -X POST http://localhost:3000/api/auth/login \
+  -H 'Content-Type: application/json' \
+  -d '{"email":"manager@supherman.com","password":"Suph3rm4n!"}'
+```
+
+La réponse contient `token` et `user`. Garder les **guillemets simples** : entre
+guillemets doubles, bash et zsh interprètent le `!` du mot de passe.
 
 ### Scripts disponibles
 
@@ -124,8 +174,6 @@ npm run seed
 | `frontend` | `npm run build` | Vérification des types puis build de production |
 | `frontend` | `npm run preview` | Sert le build de production |
 | `frontend` | `npm run lint` | oxlint |
-
-Point de contrôle : `curl http://localhost:3000/health`.
 
 ---
 
@@ -228,6 +276,10 @@ les jours de « en attente » vers « pris ».
 
 - **RH — Soldes & utilisateurs** (`/leaves/hr`) — l'annuaire complet : email,
   rôle, manager de rattachement, état du compte, soldes CP et RTT.
+  - **+ Créer un utilisateur** — email, rôle (Employé, Manager ou RH) et
+    manager responsable, choisi parmi les managers actifs (facultatif). Le
+    compte est créé sans mot de passe : la modale affiche le **lien
+    d'activation**, avec un bouton pour le copier, et la liste se met à jour.
   - **Bascule Actif** directement dans le tableau. Un compte désactivé ne peut
     plus se connecter. La RH ne peut pas désactiver son propre compte.
   - **Clic sur une ligne** — fiche complète : prénom, nom, email, rôle, manager
@@ -240,10 +292,10 @@ les jours de « en attente » vers « pris ».
 
 ### Première connexion
 
-Un compte créé par un manager n'a pas de mot de passe et ne peut donc pas se
-connecter. Le manager reçoit un lien d'activation, affiché **une seule fois** à
-la création et valable 7 jours, que le salarié ouvre pour choisir son mot de
-passe (`/set-password`).
+Un compte créé par un manager (`/admin/users`) ou par la RH (`/leaves/hr`) n'a
+pas de mot de passe et ne peut donc pas se connecter. Son créateur reçoit un
+lien d'activation, affiché **une seule fois** à la création et valable 7 jours,
+que le salarié ouvre pour choisir son mot de passe (`/set-password`).
 
 Si le lien est perdu ou expiré, la RH définit un mot de passe provisoire depuis
 l'écran RH. Tout utilisateur connecté peut ensuite changer le sien depuis
@@ -310,9 +362,34 @@ manager donne `approved_manager`, le même posé par la RH donne `approved_hr`.
 | Méthode | Route | Accès | Description |
 |---|---|---|---|
 | `GET` | `/api/users` | RH, admin | Annuaire avec état d'activation et soldes |
-| `POST` | `/api/users` | manager, admin | Crée un compte, renvoie le jeton d'activation |
+| `POST` | `/api/users` | manager, RH, admin | Crée un compte, renvoie le jeton d'activation |
 | `PATCH` | `/api/users/:id` | RH, admin | Identité, email, rôle, rattachement, activation |
 | `PATCH` | `/api/users/:id/password` | trois modes, voir ci-dessous | Définit un mot de passe |
+
+**`POST /api/users`**
+
+```json
+{ "email": "prenom.nom@exemple.fr", "role": "employee", "manager_id": 1 }
+```
+
+Les rôles attribuables dépendent du créateur :
+
+| Créateur | Rôles autorisés |
+|---|---|
+| `manager` | `employee`, `manager`, `accounting` |
+| `hr` | `employee`, `manager`, `hr` |
+| `admin` | tous |
+
+Un rôle hors de cette liste est refusé en `403`, avec un message qui rappelle
+les rôles autorisés. `manager_id` est facultatif : s'il est fourni, il doit
+désigner un compte actif de rôle `manager` ou `admin`, sinon `400`. Sans
+`manager_id`, un compte `manager` créé par un manager ou un admin est rattaché à
+son créateur ; tous les autres restent sans manager.
+
+La réponse reprend le compte créé, plus `invite_token` et `invite_expires_at`.
+Le lien d'activation est
+`<front>/set-password?user=<id>&token=<invite_token>`. Le jeton n'est renvoyé
+qu'ici : la base n'en garde que l'empreinte.
 
 **`PATCH /api/users/:id/password`** accepte trois formes :
 
@@ -442,6 +519,6 @@ SHA-256, comparée à durée constante.
 |---|---|
 | `employee` | Ses demandes, ses soldes, le calendrier d'équipe |
 | `manager` | Idem, plus la première étape de validation |
-| `hr` | Idem, plus la seconde étape, l'annuaire, les soldes et les mots de passe |
+| `hr` | Idem, plus la seconde étape, l'annuaire, la création de comptes, les soldes et les mots de passe |
 | `accounting` | Ses demandes uniquement (voir xFINT1 pour ses attributions) |
 | `admin` | Accès complet, avance d'une étape à la fois dans le circuit |

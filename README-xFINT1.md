@@ -35,11 +35,16 @@ PostgreSQL jetable :
 
 ```bash
 docker run -d --name supherman-db \
-  -e POSTGRES_PASSWORD=<mot-de-passe> \
+  -e POSTGRES_PASSWORD=postgres \
   -e POSTGRES_DB=supherman \
   -p 5432:5432 \
   postgres:15
 ```
+
+Ces identifiants (`postgres` / `postgres`, base `supherman`) sont ceux de
+`backend/.env.example` : avec cette commande, l'exemple fonctionne sans
+retouche. Si le port 5432 est déjà pris, publier un autre port (`-p 5433:5432`)
+et le reporter dans `DATABASE_URL`.
 
 Aucune commande de migration à jouer à la main : au premier démarrage, le
 serveur détecte que la table `users` est absente et applique
@@ -52,23 +57,37 @@ serveur détecte que la table `users` est absente et applique
 
 ### `backend/.env`
 
+Le fichier n'est pas versionné. Le créer à partir de l'exemple fourni :
+
+```bash
+cp backend/.env.example backend/.env
+```
+
 | Variable | Obligatoire | Défaut | Rôle |
 |---|---|---|---|
 | `DATABASE_URL` | oui | — | Chaîne de connexion PostgreSQL |
-| `JWT_SECRET` | oui | — | Clé de signature des jetons. Le serveur refuse de démarrer sans elle |
+| `JWT_SECRET` | oui | — | Clé de signature des jetons (voir ci-dessous) |
 | `JWT_EXPIRES_IN` | non | `12h` | Durée de vie d'un jeton |
 | `PORT` | non | `3000` | Port d'écoute de l'API |
 | `CORS_ORIGIN` | non | `http://localhost:5173` | Origine autorisée pour le front |
+| `NODE_ENV` | non | — | Présente dans l'exemple, sans effet sur le serveur actuellement |
 
-Exemple :
+Contenu de `backend/.env.example` :
 
 ```ini
-DATABASE_URL=postgresql://postgres:<mot-de-passe>@localhost:5432/supherman
-JWT_SECRET=<chaîne-aléatoire-longue>
+DATABASE_URL=postgresql://postgres:postgres@localhost:5432/supherman
+JWT_SECRET=change-me-to-a-long-random-string
 JWT_EXPIRES_IN=12h
+NODE_ENV=development
 PORT=3000
 CORS_ORIGIN=http://localhost:5173
 ```
+
+`JWT_SECRET` : la valeur de l'exemple suffit pour un essai local, mais doit être
+remplacée ailleurs, par exemple par la sortie de `openssl rand -hex 32`.
+Attention, le serveur **démarre même sans cette variable** : l'absence ne se
+révèle qu'à la première connexion, qui échoue en `500` avec
+`JWT_SECRET is not defined in environment`.
 
 ### `frontend/.env`
 
@@ -90,7 +109,7 @@ d'origine est conservé en base. Rien à configurer.
 
 ## 3. Lancer le projet
 
-Deux terminaux :
+Deux terminaux, qui restent ouverts :
 
 ```bash
 # Terminal 1 — API sur http://localhost:3000
@@ -102,15 +121,42 @@ cd frontend
 npm run dev
 ```
 
-Puis, une fois le backend démarré au moins une fois (les tables doivent
-exister), créer les comptes de démonstration :
+Au premier démarrage sur une base vierge, le terminal 1 doit afficher :
+
+```
+[pg] connected
+[schema] applying …/backend/src/database/schema.sql
+[schema] applied successfully
+[schema] migration 001_users_invite.sql applied
+[schema] migration 002_leaves_workflow.sql applied
+[schema] migration 003_leave_attachments_and_invites.sql applied
+[http] listening on http://localhost:3000
+```
+
+Point de contrôle : `curl http://localhost:3000/health` répond
+`{"ok":true,"uptime":…}`.
+
+La base est alors vide : aucun compte n'existe. Dans un troisième terminal,
+backend toujours lancé, créer les comptes de démonstration :
 
 ```bash
 cd backend
 npm run seed
 ```
 
-Le seed est idempotent : un email déjà présent est ignoré, jamais écrasé.
+Le seed affiche une ligne par compte créé. Il est idempotent : un email déjà
+présent est ignoré, jamais écrasé.
+
+Vérifier la connexion :
+
+```bash
+curl -X POST http://localhost:3000/api/auth/login \
+  -H 'Content-Type: application/json' \
+  -d '{"email":"manager@supherman.com","password":"Suph3rm4n!"}'
+```
+
+La réponse contient `token` et `user`. Garder les **guillemets simples** : entre
+guillemets doubles, bash et zsh interprètent le `!` du mot de passe.
 
 ### Scripts disponibles
 
@@ -124,9 +170,6 @@ Le seed est idempotent : un email déjà présent est ignoré, jamais écrasé.
 | `frontend` | `npm run build` | Vérification des types puis build de production |
 | `frontend` | `npm run preview` | Sert le build de production |
 | `frontend` | `npm run lint` | oxlint |
-
-Point de contrôle : `curl http://localhost:3000/health` doit répondre
-`{"ok":true,...}`.
 
 ---
 
@@ -208,8 +251,12 @@ paragraphe suivant.
 
 `/admin/users` — saisir un email et choisir un rôle (Salarié, Manager,
 Comptabilité). Le compte est créé **sans mot de passe** : l'écran affiche alors
-un lien d'activation à transmettre à l'intéressé, qui y choisira son mot de
-passe.
+un lien d'activation, avec un bouton pour le copier, à transmettre à
+l'intéressé, qui y choisira son mot de passe.
+
+Un manager ne peut attribuer que ces trois rôles. La RH crée aussi des comptes,
+avec d'autres rôles et un manager responsable, depuis son propre écran : voir
+[xFINT2](./README-xFINT2.md#rh).
 
 Ce lien n'est **affiché qu'une seule fois** — la base n'en conserve qu'une
 empreinte — et expire au bout de 7 jours. S'il est perdu, la RH peut définir un
@@ -232,6 +279,9 @@ en-tête `Authorization: Bearer <jeton>`.
 
 `POST /api/auth/login` répond `403` si le compte existe mais n'a pas encore de
 mot de passe, `401` si les identifiants sont faux ou le compte désactivé.
+
+Les routes de comptes (`/api/users`, dont la création) sont décrites dans
+[xFINT2](./README-xFINT2.md#utilisateurs).
 
 ### Notes de frais
 
