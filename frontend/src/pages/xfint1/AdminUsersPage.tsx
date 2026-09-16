@@ -1,16 +1,22 @@
 import { useState, type FormEvent } from 'react';
-import { apiFetch, inviteLinkFor } from '../../api';
-import type { CreatedUser, CreateUserRequest, CreateUserRole } from '../../types';
+import { apiFetch, getSessionUser, inviteLinkFor } from '../../api';
+import { ROLE_LABEL } from '../../roleLabels';
+import type { CreatedUser, CreateUserRequest, UserRole } from '../../types';
 
-const ROLE_OPTIONS: { value: CreateUserRole; label: string }[] = [
-  { value: 'employee', label: 'Employee' },
-  { value: 'manager', label: 'Manager' },
-  { value: 'accounting', label: 'Comptabilité' },
-];
+/**
+ * Rôles attribuables selon le créateur — miroir de CREATABLE_ROLES côté back
+ * (routes/users.ts), qui reste seul juge.
+ */
+const CREATABLE_ROLES: Partial<Record<UserRole, UserRole[]>> = {
+  manager: ['employee', 'manager', 'accounting'],
+  hr: ['employee', 'manager', 'hr'],
+  admin: ['employee', 'manager', 'accounting', 'hr', 'admin'],
+};
 
 export function AdminUsersPage() {
+  const roleOptions = CREATABLE_ROLES[getSessionUser()?.role ?? 'employee'] ?? [];
   const [email, setEmail] = useState('');
-  const [role, setRole] = useState<CreateUserRole>('employee');
+  const [role, setRole] = useState<UserRole>('employee');
   const [error, setError] = useState<string | null>(null);
   const [created, setCreated] = useState<CreatedUser | null>(null);
   const [copied, setCopied] = useState(false);
@@ -44,7 +50,8 @@ export function AdminUsersPage() {
     <section>
       <h1 style={styles.title}>Création de compte</h1>
       <p style={styles.subtitle}>
-        Provisionne un compte salarié, manager ou comptabilité.
+        Provisionne un compte :{' '}
+        {roleOptions.map((r) => ROLE_LABEL[r].toLowerCase()).join(', ')}.
       </p>
 
       <form onSubmit={handleSubmit} style={styles.form}>
@@ -66,12 +73,12 @@ export function AdminUsersPage() {
           <select
             required
             value={role}
-            onChange={(e) => setRole(e.target.value as CreateUserRole)}
+            onChange={(e) => setRole(e.target.value as UserRole)}
             style={styles.input}
           >
-            {ROLE_OPTIONS.map((o) => (
-              <option key={o.value} value={o.value}>
-                {o.label}
+            {roleOptions.map((r) => (
+              <option key={r} value={r}>
+                {ROLE_LABEL[r]}
               </option>
             ))}
           </select>

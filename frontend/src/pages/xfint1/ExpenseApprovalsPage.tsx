@@ -2,24 +2,13 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { apiFetch, getSessionUser } from '../../api';
 import { ExpenseDetailModal } from '../../components/ExpenseDetailModal';
 import {
+  EXPENSE_PENDING_BY_ROLE,
   STATUS_COLOR,
   STATUS_LABEL,
   formatAmount,
   formatDate,
 } from '../../expenseLabels';
-import type { ExpenseNoteWithUser, ExpenseStatus, UserRole } from '../../types';
-
-/**
- * Statut sur lequel le rôle courant a une action à mener. Aligné sur
- * resolveStatus() côté back : un manager traite les `submitted`, la
- * comptabilité les `approved_manager` (validation) puis `approved_accounting`
- * (remboursement).
- */
-const PENDING_BY_ROLE: Partial<Record<UserRole, ExpenseStatus[]>> = {
-  manager: ['submitted'],
-  accounting: ['approved_manager', 'approved_accounting'],
-  admin: ['submitted', 'approved_manager', 'approved_accounting'],
-};
+import type { ExpenseNoteWithUser } from '../../types';
 
 export function ExpenseApprovalsPage() {
   const user = getSessionUser();
@@ -47,7 +36,7 @@ export function ExpenseApprovalsPage() {
     void load();
   }, [load]);
 
-  const pendingStatuses = user ? PENDING_BY_ROLE[user.role] : undefined;
+  const pendingStatuses = user ? EXPENSE_PENDING_BY_ROLE[user.role] : undefined;
 
   // On ne peut pas valider sa propre note : elle est exclue de la file d'attente
   // (mais reste visible en vue complète).

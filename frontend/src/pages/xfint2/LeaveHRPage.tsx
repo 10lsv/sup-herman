@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { apiFetch, getSessionUser, inviteLinkFor } from '../../api';
 import { leaveTypeColor } from '../../leaveLabels';
+import { ROLE_LABEL } from '../../roleLabels';
 import type {
   CreatedUser,
   CreateUserRequest,
@@ -8,14 +9,6 @@ import type {
   UserWithBalances,
   UserRole,
 } from '../../types';
-
-const ROLE_LABEL: Record<UserRole, string> = {
-  employee: 'Salarié',
-  manager: 'Manager',
-  accounting: 'Comptabilité',
-  hr: 'RH',
-  admin: 'Admin',
-};
 
 /** Colonnes de solde affichées directement dans le tableau. */
 const HEADLINE_CODES = ['PAID', 'RTT'];

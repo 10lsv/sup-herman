@@ -94,9 +94,6 @@ export interface CreateExpenseRequest {
   expense_date?: string;
 }
 
-/** Rôles provisionnables depuis l'écran d'administration. */
-export type CreateUserRole = Extract<UserRole, 'employee' | 'manager' | 'accounting'>;
-
 /**
  * Corps de POST /api/users. Les rôles acceptés dépendent du créateur :
  * manager → employee/manager/accounting, hr → employee/manager/hr, admin → tous.

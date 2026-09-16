@@ -1,7 +1,7 @@
 // Libellés, couleurs et formatage partagés par les écrans xFINT2.
 // Pendant de expenseLabels.ts pour les notes de frais.
 
-import type { LeaveStatus } from './types';
+import type { LeaveStatus, UserRole } from './types';
 
 /**
  * Libellés du sujet xFINT2 : En attente, Validée, Refusée, Annulée. Les deux
@@ -54,6 +54,17 @@ export function isActiveLeave(status: LeaveStatus): boolean {
     status === 'approved'
   );
 }
+
+/**
+ * Étape sur laquelle le rôle a une décision à rendre. Aligné sur
+ * resolveStatus() côté back : le manager traite les `submitted`, la RH les
+ * `approved_manager`.
+ */
+export const LEAVE_PENDING_BY_ROLE: Partial<Record<UserRole, LeaveStatus[]>> = {
+  manager: ['submitted'],
+  hr: ['approved_manager'],
+  admin: ['submitted', 'approved_manager'],
+};
 
 /** Une demande close n'accepte plus aucune décision. */
 export function isFinalLeaveStatus(status: LeaveStatus): boolean {

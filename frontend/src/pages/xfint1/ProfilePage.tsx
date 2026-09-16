@@ -1,14 +1,6 @@
 import { Link, useLocation } from 'react-router-dom';
 import { getSessionUser } from '../../api';
-import type { UserRole } from '../../types';
-
-const ROLE_LABEL: Record<UserRole, string> = {
-  employee: 'Salarié',
-  manager: 'Manager',
-  accounting: 'Comptabilité',
-  hr: 'RH',
-  admin: 'Admin',
-};
+import { ROLE_LABEL } from '../../roleLabels';
 
 /** État de navigation accepté par /profile, posé par SetPasswordPage. */
 export interface ProfileLocationState {
@@ -51,6 +43,12 @@ export function ProfilePage() {
           <span style={styles.badge}>{ROLE_LABEL[user.role]}</span>
         </dd>
       </dl>
+
+      <p style={styles.actions}>
+        <Link to="/set-password" style={styles.action}>
+          Changer mon mot de passe
+        </Link>
+      </p>
     </section>
   );
 }
@@ -80,6 +78,17 @@ const styles: Record<string, React.CSSProperties> = {
     fontWeight: 600,
   },
   muted: { color: '#9a9aa0' },
+  actions: { margin: '16px 0 0' },
+  action: {
+    display: 'inline-block',
+    padding: '9px 16px',
+    borderRadius: 6,
+    border: '1px solid #d0d0d5',
+    background: '#fff',
+    color: '#1a1a1f',
+    fontSize: 14,
+    textDecoration: 'none',
+  },
   success: {
     maxWidth: 480,
     boxSizing: 'border-box',

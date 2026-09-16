@@ -1,6 +1,6 @@
 // Libellés et couleurs partagés entre la liste et la modale de détail.
 
-import type { ExpenseCategory, ExpenseStatus } from './types';
+import type { ExpenseCategory, ExpenseStatus, UserRole } from './types';
 
 export const CATEGORY_LABEL: Record<ExpenseCategory, string> = {
   travel: 'Déplacement',
@@ -31,6 +31,17 @@ export const STATUS_COLOR: Record<ExpenseStatus, { bg: string; fg: string }> = {
   approved_accounting: { bg: '#e6f4ea', fg: '#1e7c3a' },
   rejected: { bg: '#fdecea', fg: '#b3261e' },
   reimbursed: { bg: '#e6f4ea', fg: '#14532d' },
+};
+
+/**
+ * Statuts sur lesquels le rôle a une action à mener. Aligné sur resolveStatus()
+ * côté back : un manager traite les `submitted`, la comptabilité les
+ * `approved_manager` (validation) puis `approved_accounting` (remboursement).
+ */
+export const EXPENSE_PENDING_BY_ROLE: Partial<Record<UserRole, ExpenseStatus[]>> = {
+  manager: ['submitted'],
+  accounting: ['approved_manager', 'approved_accounting'],
+  admin: ['submitted', 'approved_manager', 'approved_accounting'],
 };
 
 /** Une note dans un état terminal ne peut plus être validée ni refusée. */

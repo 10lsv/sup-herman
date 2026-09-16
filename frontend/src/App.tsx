@@ -1,4 +1,5 @@
-import { BrowserRouter, Navigate, Outlet, Route, Routes } from 'react-router-dom';
+import { BrowserRouter, Link, Navigate, Outlet, Route, Routes } from 'react-router-dom';
+import { DashboardPage } from './pages/DashboardPage';
 import { LoginPage } from './components/LoginPage';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { Layout } from './components/Layout';
@@ -16,29 +17,16 @@ import { LeaveHRPage } from './pages/xfint2/LeaveHRPage';
 import { SetPasswordPage } from './pages/xfint2/SetPasswordPage';
 import type { UserRole } from './types';
 
-// ---------------------------------------------------------------------------
-// Placeholders — remplaceront progressivement les vraies pages xFINT1/xFINT2.
-// ---------------------------------------------------------------------------
-
-function Placeholder({ title, subtitle }: { title: string; subtitle?: string }) {
+function NotFound() {
   return (
     <section>
-      <h1 style={{ marginTop: 0 }}>{title}</h1>
-      {subtitle && <p style={{ color: '#606066' }}>{subtitle}</p>}
-      <p style={{ color: '#9a9aa0', fontStyle: 'italic' }}>
-        (Page en cours d'implémentation)
+      <h1 style={{ marginTop: 0, fontSize: 22 }}>Page introuvable</h1>
+      <p style={{ color: '#606066' }}>
+        Cette page n'existe pas. <Link to="/dashboard">Retour à l'accueil</Link>.
       </p>
     </section>
   );
 }
-
-const Dashboard = () => (
-  <Placeholder title="Tableau de bord" subtitle="Aperçu global xFINT1 + xFINT2" />
-);
-
-const NotFound = () => (
-  <Placeholder title="404" subtitle="Cette page n'existe pas." />
-);
 
 // ---------------------------------------------------------------------------
 // Wrapper : ProtectedRoute + Layout + Outlet
@@ -74,7 +62,7 @@ export default function App() {
         {/* Routes générales (tout utilisateur connecté) */}
         <Route element={<AuthedShell />}>
           <Route index element={<Navigate to="/dashboard" replace />} />
-          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/dashboard" element={<DashboardPage />} />
 
           {/* xFINT1 */}
           <Route path="/expenses" element={<ExpenseListPage />} />
@@ -105,8 +93,9 @@ export default function App() {
           <Route path="/leaves/approvals" element={<LeaveApprovalsPage />} />
         </Route>
 
-        {/* Routes réservées manager */}
-        <Route element={<AuthedShell allowedRoles={['manager', 'admin']} />}>
+        {/* Création de comptes : manager et RH, chacun avec ses rôles
+            attribuables (contrôlés par POST /api/users). */}
+        <Route element={<AuthedShell allowedRoles={['manager', 'hr', 'admin']} />}>
           <Route path="/admin/users" element={<AdminUsersPage />} />
         </Route>
 

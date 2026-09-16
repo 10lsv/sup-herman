@@ -221,9 +221,27 @@ internes :
 Une note refusée ou traitée est close : plus aucune décision n'est possible
 dessus. Personne ne peut valider sa propre note, quel que soit son rôle.
 
+### Accueil
+
+`/dashboard`, la page d'arrivée après connexion, également joignable par le nom
+de l'application dans la barre du haut :
+
+- **Notes de frais** — le nombre de notes par statut (Créée, Validée, Refusée,
+  Traitée), les trois dernières, et les accès « Mes notes » et « + Nouvelle
+  note ».
+- **Congés** — les soldes de congés payés et de RTT restants, le nombre de
+  demandes en attente de validation et le prochain congé validé (voir
+  [xFINT2](./README-xFINT2.md)).
+- **À traiter** (manager, comptabilité, RH) — le nombre de notes de frais et de
+  congés qui attendent une décision de l'utilisateur, ses propres éléments
+  exclus, avec un lien vers l'écran de validation.
+
+Le menu latéral regroupe les écrans en deux sections, **Notes de frais** et
+**Congés**, suivies de **Utilisateurs** (manager, RH) et **Mon profil**.
+
 ### Salarié
 
-- **Mes notes de frais** (`/expenses`) — la liste de ses notes, avec le statut
+- **Mes notes** (`/expenses`) — la liste de ses notes, avec le statut
   courant. Un clic sur une ligne ouvre le détail.
 - **Nouvelle note** (`/expenses/new`) — titre, commentaire, catégorie
   (Déplacement, Repas, Hébergement, Fournitures, Autre), montant, date de
@@ -248,27 +266,28 @@ Tout ce qui précède, plus :
 - Dans le détail : **Valider** ou **Refuser**, avec un commentaire facultatif
   qui sera visible par le salarié.
 
-Le manager dispose aussi de l'écran **Utilisateurs** (`/admin/users`), décrit au
-paragraphe suivant.
+Le manager dispose aussi de l'écran **Utilisateurs** (`/admin/users`), décrit
+plus bas.
 
 ### Comptabilité
 
-- **Comptabilité** (`/expenses/accounting`) — même écran que celui du manager,
-  filtré sur les étapes qui la concernent.
+- **À valider** (`/expenses/approvals`) — même écran que celui du manager,
+  filtré sur les étapes qui la concernent. L'ancienne adresse
+  `/expenses/accounting` mène toujours au même écran.
 - Dans le détail : **Valider** une note déjà validée par le manager, puis
   **Marquer traitée** une fois le virement effectué. Le refus reste possible
   tant que la note n'est pas traitée.
 
-### Création de comptes (manager)
+### Création de comptes (manager, RH)
 
-`/admin/users` — saisir un email et choisir un rôle (Salarié, Manager,
-Comptabilité). Le compte est créé **sans mot de passe** : l'écran affiche alors
+**Utilisateurs** (`/admin/users`) — saisir un email et choisir un rôle parmi
+ceux que le créateur peut attribuer : Salarié, Manager, Comptabilité pour un
+manager ; Salarié, Manager, RH pour la RH. Le compte est créé **sans mot de passe** : l'écran affiche alors
 un lien d'activation, avec un bouton pour le copier, à transmettre à
 l'intéressé, qui y choisira son mot de passe.
 
-Un manager ne peut attribuer que ces trois rôles. La RH crée aussi des comptes,
-avec d'autres rôles et un manager responsable, depuis son propre écran : voir
-[xFINT2](./README-xFINT2.md#rh).
+La RH peut aussi créer un compte en choisissant son manager responsable depuis
+l'écran **Gestion RH** : voir [xFINT2](./README-xFINT2.md#rh).
 
 Ce lien n'est **affiché qu'une seule fois** — la base n'en conserve qu'une
 empreinte — et expire au bout de 7 jours. S'il est perdu, la RH peut définir un

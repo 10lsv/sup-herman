@@ -2,24 +2,14 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { apiFetch, getSessionUser } from '../../api';
 import { LeaveDetailModal } from '../../components/LeaveDetailModal';
 import {
+  LEAVE_PENDING_BY_ROLE,
   LEAVE_STATUS_COLOR,
   LEAVE_STATUS_LABEL,
   formatDays,
   formatLeaveDate,
   leaveTypeColor,
 } from '../../leaveLabels';
-import type { LeaveRequestDetail, LeaveStatus, UserRole } from '../../types';
-
-/**
- * Étape sur laquelle le rôle courant a une décision à rendre. Aligné sur
- * resolveStatus() côté back : le manager traite les `submitted`, la RH les
- * `approved_manager`.
- */
-const PENDING_BY_ROLE: Partial<Record<UserRole, LeaveStatus[]>> = {
-  manager: ['submitted'],
-  hr: ['approved_manager'],
-  admin: ['submitted', 'approved_manager'],
-};
+import type { LeaveRequestDetail, LeaveStatus } from '../../types';
 
 /**
  * Options du filtre Statut. Les deux étapes de validation partagent le libellé
@@ -80,7 +70,7 @@ export function LeaveApprovalsPage() {
     return [...byCode.entries()].sort((a, b) => a[1].localeCompare(b[1]));
   }, [leaves]);
 
-  const pendingStatuses = user ? PENDING_BY_ROLE[user.role] : undefined;
+  const pendingStatuses = user ? LEAVE_PENDING_BY_ROLE[user.role] : undefined;
 
   const visible = useMemo(() => {
     return leaves.filter((l) => {

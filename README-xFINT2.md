@@ -252,13 +252,24 @@ Le solde restant vaut `alloué − pris − en attente`. Seuls les types dotés
 sans solde et formation sont décomptés mais jamais bloquants. Une demande à
 cheval sur le 31 décembre est imputée en entier sur l'année de début.
 
+### Accueil
+
+La page d'accueil commune (`/dashboard`, décrite dans
+[xFINT1](./README-xFINT1.md#accueil)) résume les congés : soldes de congés payés
+et de RTT restants, nombre de demandes en attente de validation, prochain congé
+validé. Pour le manager et la RH, la carte **À traiter** compte les demandes
+qui attendent leur décision.
+
+Dans le menu, la section **Congés** regroupe Tableau de bord, Mes demandes,
+Nouvelle demande, Calendrier, À valider (manager, RH) et Gestion RH (RH).
+
 ### Salarié
 
 - **Tableau de bord** (`/leaves`) — les soldes par type sous forme de jauges,
   les demandes en cours de validation, les congés validés à venir.
 - **Mes demandes** (`/leaves/list`) — l'historique complet : type, dates, jours,
   statut. Un clic ouvre le détail.
-- **Demander un congé** (`/leaves/new`) — type, date de début, date de fin,
+- **Nouvelle demande** (`/leaves/new`) — type, date de début, date de fin,
   motif, justificatif.
   - Le nombre de jours décomptés, le solde du type choisi et le solde après
     demande s'affichent en direct pendant la saisie, avec le détail jour par
@@ -292,7 +303,7 @@ Le même écran de validation, positionné sur la seconde étape : la RH approuv
 les demandes déjà validées par un manager. C'est cette validation qui bascule
 les jours de « en attente » vers « pris ».
 
-- **RH — Soldes & utilisateurs** (`/leaves/hr`) — l'annuaire complet : email,
+- **Gestion RH** (`/leaves/hr`) — l'annuaire complet : email,
   rôle, manager de rattachement, état du compte, soldes CP et RTT.
   - **+ Créer un utilisateur** — email, rôle (Employé, Manager ou RH) et
     manager responsable, choisi parmi les managers actifs (facultatif). Le
@@ -310,14 +321,15 @@ les jours de « en attente » vers « pris ».
 
 ### Première connexion
 
-Un compte créé par un manager (`/admin/users`) ou par la RH (`/leaves/hr`) n'a
+Un compte créé depuis **Utilisateurs** (`/admin/users`, manager ou RH) ou depuis
+**Gestion RH** (`/leaves/hr`) n'a
 pas de mot de passe et ne peut donc pas se connecter. Son créateur reçoit un
 lien d'activation, affiché **une seule fois** à la création et valable 7 jours,
 que le salarié ouvre pour choisir son mot de passe (`/set-password`).
 
 Si le lien est perdu ou expiré, la RH définit un mot de passe provisoire depuis
 l'écran RH. Tout utilisateur connecté peut ensuite changer le sien depuis
-**Changer mon mot de passe**, en fournissant l'actuel.
+**Mon profil** → **Changer mon mot de passe**, en fournissant l'actuel.
 
 ---
 
