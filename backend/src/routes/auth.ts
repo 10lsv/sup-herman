@@ -3,7 +3,8 @@ import bcrypt from 'bcryptjs';
 import { z } from 'zod';
 import { pool } from '../db';
 import { authenticate, signAuthToken } from '../middleware/auth';
-import type { LoginResponse, PublicUser, User, UserRole } from '../types';
+import { toPublicUser } from '../lib/publicUser';
+import type { LoginResponse, User, UserRole } from '../types';
 
 export const authRouter = Router();
 
@@ -22,11 +23,6 @@ const registerSchema = z.object({
   role: z.enum(['manager', 'admin']),
   department: z.string().optional(),
 });
-
-function toPublicUser(row: User): PublicUser {
-  const { password_hash: _p, ...rest } = row;
-  return rest;
-}
 
 // ---------------------------------------------------------------------------
 // POST /api/auth/login

@@ -142,9 +142,10 @@ export interface LeaveBalance {
 // DTOs / JWT
 // ---------------------------------------------------------------------------
 
-export type PublicUser = Omit<
+/** Projection exposée par l'API, construite par `toPublicUser()` (lib/publicUser). */
+export type PublicUser = Pick<
   User,
-  'password_hash' | 'password_token_hash' | 'password_token_expires_at'
+  'id' | 'email' | 'first_name' | 'last_name' | 'role' | 'manager_id' | 'is_active' | 'created_at'
 >;
 
 /** Pièce jointe d'une demande de congé (table leave_attachments). */

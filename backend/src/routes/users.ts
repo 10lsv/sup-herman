@@ -9,9 +9,9 @@ import {
   requireManager,
   requireRole,
 } from '../middleware/auth';
+import { toPublicUser } from '../lib/publicUser';
 import type {
   LeaveBalanceSummary,
-  PublicUser,
   User,
   UserWithBalances,
 } from '../types';
@@ -71,16 +71,6 @@ function parseId(raw: string | string[] | undefined): number | null {
   if (typeof raw !== 'string') return null;
   const id = Number(raw);
   return Number.isInteger(id) && id > 0 ? id : null;
-}
-
-function toPublicUser(row: User): PublicUser {
-  const {
-    password_hash: _p,
-    password_token_hash: _t,
-    password_token_expires_at: _e,
-    ...rest
-  } = row;
-  return rest;
 }
 
 function hashToken(token: string): string {

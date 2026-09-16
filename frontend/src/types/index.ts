@@ -36,10 +36,8 @@ export interface User {
   last_name: string;
   role: UserRole;
   manager_id: number | null;
-  department: string | null;
   is_active: boolean;
   created_at: string;
-  updated_at: string;
 }
 
 export interface ExpenseNote {
