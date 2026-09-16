@@ -102,14 +102,14 @@ export function LeaveApprovalsPage() {
 
   return (
     <section>
-      <header style={styles.header}>
+      <header className="page-header" style={styles.header}>
         <h1 style={styles.title}>Congés — validation</h1>
         <span style={styles.count}>
           {visible.length} / {leaves.length} demande(s)
         </span>
       </header>
 
-      <div style={styles.filters}>
+      <div className="filters" style={styles.filters}>
         {pendingStatuses && (
           <label style={styles.check}>
             <input
@@ -185,8 +185,8 @@ export function LeaveApprovalsPage() {
             : 'Aucune demande de congé.'}
         </p>
       ) : (
-        <div style={styles.tableWrap}>
-          <table style={styles.table}>
+        <div className="table-scroll" style={styles.tableWrap}>
+          <table className="data-table" style={styles.table}>
             <thead>
               <tr>
                 <th style={styles.th}>Salarié</th>

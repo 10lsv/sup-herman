@@ -110,7 +110,7 @@ export function ExpenseNewPage() {
           />
         </label>
 
-        <div style={styles.row}>
+        <div className="form-row" style={styles.row}>
           <label style={styles.label}>
             Catégorie *
             <select
@@ -175,7 +175,7 @@ export function ExpenseNewPage() {
 
         {error && <div style={styles.error}>{error}</div>}
 
-        <div style={styles.actions}>
+        <div className="form-actions" style={styles.actions}>
           <button type="submit" disabled={submitting} style={styles.submit}>
             {submitting ? 'Envoi…' : 'Créer la note'}
           </button>

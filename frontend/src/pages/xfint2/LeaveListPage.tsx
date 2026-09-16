@@ -35,7 +35,7 @@ export function LeaveListPage() {
 
   return (
     <section>
-      <header style={styles.header}>
+      <header className="page-header" style={styles.header}>
         <h1 style={styles.title}>Mes demandes de congé</h1>
         <Link to="/leaves/new" style={styles.newButton}>
           + Demander un congé
@@ -52,8 +52,8 @@ export function LeaveListPage() {
           <Link to="/leaves/new">Créer la première</Link>.
         </p>
       ) : (
-        <div style={styles.tableWrap}>
-          <table style={styles.table}>
+        <div className="table-scroll" style={styles.tableWrap}>
+          <table className="data-table" style={styles.table}>
             <thead>
               <tr>
                 <th style={styles.th}>Type</th>

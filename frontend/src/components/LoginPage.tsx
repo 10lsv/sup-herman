@@ -41,7 +41,7 @@ export function LoginPage() {
 
   return (
     <div style={styles.page}>
-      <form onSubmit={handleSubmit} style={styles.form}>
+      <form onSubmit={handleSubmit} className="auth-card" style={styles.form}>
         <h1 style={styles.title}>Connexion</h1>
 
         <label style={styles.label}>
@@ -84,13 +84,15 @@ const styles: Record<string, React.CSSProperties> = {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
+    padding: 16,
     background: '#f5f5f7',
   },
   form: {
     display: 'flex',
     flexDirection: 'column',
     gap: 16,
-    width: 360,
+    width: 'min(360px, 100%)',
+    boxSizing: 'border-box',
     padding: 32,
     background: '#fff',
     borderRadius: 8,

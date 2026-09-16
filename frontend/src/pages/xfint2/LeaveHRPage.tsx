@@ -90,7 +90,7 @@ export function LeaveHRPage() {
 
   return (
     <section>
-      <header style={styles.header}>
+      <header className="page-header" style={styles.header}>
         <h1 style={styles.title}>RH — utilisateurs et soldes</h1>
         <span style={styles.count}>{users.length} compte(s)</span>
       </header>
@@ -101,8 +101,8 @@ export function LeaveHRPage() {
       {loading ? (
         <p style={styles.muted}>Chargement…</p>
       ) : (
-        <div style={styles.tableWrap}>
-          <table style={styles.table}>
+        <div className="table-scroll" style={styles.tableWrap}>
+          <table className="data-table" style={styles.table}>
             <thead>
               <tr>
                 <th style={styles.th}>Utilisateur</th>
@@ -357,7 +357,7 @@ function BalanceDialog({
 
         {error && <div style={styles.error}>{error}</div>}
 
-        <div style={styles.actionRow}>
+        <div className="modal-actions" style={styles.actionRow}>
           <button type="submit" disabled={saving} style={styles.primary}>
             {saving ? 'Enregistrement…' : 'Enregistrer'}
           </button>
@@ -428,7 +428,7 @@ function EditUserDialog({
   return (
     <Dialog title={`Fiche — ${user.email}`} onClose={onClose}>
       <form onSubmit={handleSubmit} style={styles.form}>
-        <div style={styles.fieldRow}>
+        <div className="form-row" style={styles.fieldRow}>
           <label style={styles.label}>
             Prénom
             <input
@@ -463,7 +463,7 @@ function EditUserDialog({
           />
         </label>
 
-        <div style={styles.fieldRow}>
+        <div className="form-row" style={styles.fieldRow}>
           <label style={styles.label}>
             Rôle
             <select
@@ -522,7 +522,7 @@ function EditUserDialog({
 
         {error && <div style={styles.error}>{error}</div>}
 
-        <div style={styles.actionRow}>
+        <div className="modal-actions" style={styles.actionRow}>
           <button type="submit" disabled={saving} style={styles.primary}>
             {saving ? 'Enregistrement…' : 'Enregistrer'}
           </button>
@@ -593,7 +593,7 @@ function PasswordDialog({
 
         {error && <div style={styles.error}>{error}</div>}
 
-        <div style={styles.actionRow}>
+        <div className="modal-actions" style={styles.actionRow}>
           <button
             type="submit"
             disabled={saving || password.length < 8}
@@ -632,21 +632,27 @@ function Dialog({
   }, [onClose]);
 
   return (
-    <div style={styles.overlay} onClick={onClose} role="presentation">
+    <div
+      className="modal-overlay"
+      style={styles.overlay}
+      onClick={onClose}
+      role="presentation"
+    >
       <div
+        className="modal"
         style={styles.modal}
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
         aria-label={title}
       >
-        <header style={styles.modalHeader}>
-          <h2 style={styles.modalTitle}>{title}</h2>
+        <header className="modal-header" style={styles.modalHeader}>
+          <h2 className="modal-title" style={styles.modalTitle}>{title}</h2>
           <button onClick={onClose} style={styles.close} aria-label="Fermer">
             ×
           </button>
         </header>
-        <div style={styles.modalBody}>{children}</div>
+        <div className="modal-body" style={styles.modalBody}>{children}</div>
       </div>
     </div>
   );
@@ -750,7 +756,7 @@ const styles: Record<string, React.CSSProperties> = {
   },
   balanceLabel: { flex: 1 },
   dot: { width: 10, height: 10, borderRadius: '50%', flexShrink: 0 },
-  actionRow: { display: 'flex', gap: 10 },
+  actionRow: { display: 'flex', gap: 10, flexWrap: 'wrap' },
   fieldRow: { display: 'flex', gap: 14, flexWrap: 'wrap' },
   checkLabel: { display: 'flex', alignItems: 'center', gap: 8, fontSize: 14 },
   row: { cursor: 'pointer' },

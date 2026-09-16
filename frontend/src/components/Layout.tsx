@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import type { User, UserRole } from '../types';
 
@@ -59,6 +59,17 @@ interface LayoutProps {
 export function Layout({ children }: LayoutProps) {
   const navigate = useNavigate();
   const user = getSessionUser();
+  // Tiroir de navigation, utilisé seulement sous 768 px (voir responsive.css).
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setMenuOpen(false);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [menuOpen]);
 
   function handleLogout() {
     localStorage.removeItem('token');
@@ -72,13 +83,25 @@ export function Layout({ children }: LayoutProps) {
 
   return (
     <div style={styles.shell}>
-      <header style={styles.navbar}>
-        <div style={styles.brand}>sup-herman</div>
+      <header className="app-navbar" style={styles.navbar}>
+        <button
+          type="button"
+          className="app-menu-toggle"
+          onClick={() => setMenuOpen((open) => !open)}
+          aria-expanded={menuOpen}
+          aria-controls="app-sidebar"
+          aria-label={menuOpen ? 'Fermer le menu' : 'Ouvrir le menu'}
+        >
+          {menuOpen ? '×' : '☰'}
+        </button>
+        <div className="app-brand" style={styles.brand}>sup-herman</div>
         <div style={styles.navRight}>
           {user && (
             <>
               <span style={styles.userInfo}>
-                {user.first_name} {user.last_name}
+                <span className="app-user-name">
+                  {user.first_name} {user.last_name}
+                </span>
                 <span style={styles.roleTag}>{ROLE_LABEL[user.role]}</span>
               </span>
               <button onClick={handleLogout} style={styles.logout}>
@@ -90,13 +113,27 @@ export function Layout({ children }: LayoutProps) {
       </header>
 
       <div style={styles.body}>
-        <aside style={styles.sidebar}>
+        {menuOpen && (
+          <button
+            type="button"
+            className="app-backdrop"
+            onClick={() => setMenuOpen(false)}
+            aria-label="Fermer le menu"
+            tabIndex={-1}
+          />
+        )}
+        <aside
+          id="app-sidebar"
+          className={menuOpen ? 'app-sidebar is-open' : 'app-sidebar'}
+          style={styles.sidebar}
+        >
           <nav style={styles.nav}>
             {visibleMenu.map((item) => (
               <NavLink
                 key={item.to}
                 to={item.to}
                 end
+                onClick={() => setMenuOpen(false)}
                 style={({ isActive }) => ({
                   ...styles.navLink,
                   ...(isActive ? styles.navLinkActive : {}),
@@ -108,7 +145,7 @@ export function Layout({ children }: LayoutProps) {
           </nav>
         </aside>
 
-        <main style={styles.main}>{children}</main>
+        <main className="app-main" style={styles.main}>{children}</main>
       </div>
     </div>
   );
@@ -169,7 +206,10 @@ const styles: Record<string, React.CSSProperties> = {
     color: '#fff',
     fontWeight: 600,
   },
-  main: { flex: 1, padding: 24, background: '#fff' },
+  // minWidth 0 : sans lui, un élément flex ne rétrécit pas sous la largeur de
+  // son contenu, et un tableau large élargirait toute la page au lieu de
+  // défiler dans son cadre.
+  main: { flex: 1, minWidth: 0, padding: 24, background: '#fff' },
 };
 
 export default Layout;

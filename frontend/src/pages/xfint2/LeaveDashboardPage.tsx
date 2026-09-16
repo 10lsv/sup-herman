@@ -70,7 +70,7 @@ export function LeaveDashboardPage() {
 
   return (
     <section>
-      <header style={styles.header}>
+      <header className="page-header" style={styles.header}>
         <h1 style={styles.title}>Mes congés</h1>
         <Link to="/leaves/new" style={styles.newButton}>
           + Demander un congé
@@ -268,7 +268,7 @@ const styles: Record<string, React.CSSProperties> = {
   cardFoot: { fontSize: 12, color: '#9a9aa0' },
   columns: {
     display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(min(320px, 100%), 1fr))',
     gap: 20,
     margin: '24px 0 16px',
   },

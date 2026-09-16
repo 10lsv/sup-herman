@@ -114,7 +114,7 @@ export function LeaveCalendarPage() {
     <section>
       <header style={styles.header}>
         <h1 style={styles.title}>Calendrier des congés</h1>
-        <div style={styles.controls}>
+        <div className="cal-controls" style={styles.controls}>
           <label style={styles.filterLabel}>
             Affichage
             <select
@@ -126,11 +126,11 @@ export function LeaveCalendarPage() {
               <option value="mine">Mes congés</option>
             </select>
           </label>
-          <div style={styles.nav}>
+          <div className="cal-nav" style={styles.nav}>
             <button onClick={() => shiftMonth(-1)} style={styles.navButton}>
               ‹
             </button>
-            <span style={styles.monthLabel}>
+            <span className="cal-month" style={styles.monthLabel}>
               {MONTHS[cursor.month]} {cursor.year}
             </span>
             <button onClick={() => shiftMonth(1)} style={styles.navButton}>
@@ -158,29 +158,34 @@ export function LeaveCalendarPage() {
 
           <div style={styles.grid}>
             {WEEKDAYS.map((d) => (
-              <div key={d} style={styles.weekday}>
+              <div key={d} className="cal-weekday" style={styles.weekday}>
                 {d}
               </div>
             ))}
 
             {cells.map((iso, index) => {
               if (!iso) {
-                return <div key={`pad-${index}`} style={styles.padCell} />;
+                return <div key={`pad-${index}`} className="cal-pad" style={styles.padCell} />;
               }
               const dayLeaves = byDay.get(iso) ?? [];
               const off = isWeekend(iso) || isHoliday(iso);
               return (
                 <div
                   key={iso}
+                  className="cal-cell"
                   style={{
                     ...styles.cell,
                     ...(off ? styles.offCell : {}),
                     ...(iso === today ? styles.todayCell : {}),
                   }}
                 >
-                  <div style={styles.dayNumber}>
+                  <div className="cal-day" style={styles.dayNumber}>
                     {Number(iso.slice(8, 10))}
-                    {isHoliday(iso) && <span style={styles.holiday}>férié</span>}
+                    {isHoliday(iso) && (
+                      <span className="cal-holiday" title="Jour férié" style={styles.holiday}>
+                        férié
+                      </span>
+                    )}
                   </div>
                   <div style={styles.entries}>
                     {dayLeaves.slice(0, 3).map((l) => (
@@ -188,6 +193,7 @@ export function LeaveCalendarPage() {
                         key={l.id}
                         onClick={() => setSelectedId(l.id)}
                         title={`${l.user_first_name} ${l.user_last_name} — ${l.leave_type_label} (${formatDays(l.days_requested)})`}
+                        className="cal-entry"
                         style={{
                           ...styles.entry,
                           background: leaveTypeColor(l.leave_type_code),
@@ -197,7 +203,7 @@ export function LeaveCalendarPage() {
                       </button>
                     ))}
                     {dayLeaves.length > 3 && (
-                      <span style={styles.more}>+{dayLeaves.length - 3}</span>
+                      <span className="cal-more" style={styles.more}>+{dayLeaves.length - 3}</span>
                     )}
                   </div>
                 </div>
@@ -281,7 +287,17 @@ const styles: Record<string, React.CSSProperties> = {
     textAlign: 'center',
   },
   padCell: { background: '#fafafb', minHeight: 92 },
-  cell: { background: '#fff', minHeight: 92, padding: 6, display: 'grid', gap: 4, alignContent: 'start' },
+  // minmax(0, 1fr) : sans piste explicite, une entrée en nowrap élargit la case
+  // au lieu d'être tronquée par son ellipsis.
+  cell: {
+    background: '#fff',
+    minHeight: 92,
+    padding: 6,
+    display: 'grid',
+    gridTemplateColumns: 'minmax(0, 1fr)',
+    gap: 4,
+    alignContent: 'start',
+  },
   offCell: { background: '#fafafb' },
   todayCell: { boxShadow: 'inset 0 0 0 2px #0b5fff' },
   dayNumber: {
@@ -292,7 +308,7 @@ const styles: Record<string, React.CSSProperties> = {
     gap: 4,
   },
   holiday: { fontSize: 10, color: '#b3261e' },
-  entries: { display: 'grid', gap: 2 },
+  entries: { display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 2 },
   entry: {
     border: 'none',
     borderRadius: 4,

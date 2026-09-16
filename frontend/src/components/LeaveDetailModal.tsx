@@ -148,16 +148,22 @@ export function LeaveDetailModal({ leaveId, onClose, onUpdated }: LeaveDetailMod
   const canEditAttachments = !!leave && (isOwner || isHR);
 
   return (
-    <div style={styles.overlay} onClick={onClose} role="presentation">
+    <div
+      className="modal-overlay"
+      style={styles.overlay}
+      onClick={onClose}
+      role="presentation"
+    >
       <div
+        className="modal"
         style={styles.modal}
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
         aria-label="Détail de la demande de congé"
       >
-        <header style={styles.header}>
-          <h2 style={styles.title}>
+        <header className="modal-header" style={styles.header}>
+          <h2 className="modal-title" style={styles.title}>
             {leave ? leave.leave_type_label : 'Demande de congé'}
           </h2>
           <button onClick={onClose} style={styles.close} aria-label="Fermer">
@@ -165,7 +171,7 @@ export function LeaveDetailModal({ leaveId, onClose, onUpdated }: LeaveDetailMod
           </button>
         </header>
 
-        <div style={styles.content}>
+        <div className="modal-body" style={styles.content}>
           {loading && <p style={styles.muted}>Chargement…</p>}
           {error && <div style={styles.error}>{error}</div>}
 
@@ -184,7 +190,7 @@ export function LeaveDetailModal({ leaveId, onClose, onUpdated }: LeaveDetailMod
                 <span style={styles.days}>{formatDays(leave.days_requested)}</span>
               </div>
 
-              <dl style={styles.grid}>
+              <dl className="detail-grid" style={styles.grid}>
                 <dt style={styles.dt}>Type</dt>
                 <dd style={styles.dd}>
                   <span
@@ -300,7 +306,7 @@ export function LeaveDetailModal({ leaveId, onClose, onUpdated }: LeaveDetailMod
                       style={styles.textarea}
                     />
                   </label>
-                  <div style={styles.actionRow}>
+                  <div className="modal-actions" style={styles.actionRow}>
                     {canApprove && (
                       <button
                         onClick={() => void handleDecision('approved')}

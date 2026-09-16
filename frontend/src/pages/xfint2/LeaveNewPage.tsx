@@ -206,7 +206,7 @@ export function LeaveNewPage() {
             </select>
           </label>
 
-          <div style={styles.row}>
+          <div className="form-row" style={styles.row}>
             <label style={styles.label}>
               Date de début *
               <input
@@ -345,7 +345,7 @@ export function LeaveNewPage() {
 
           {error && <div style={styles.error}>{error}</div>}
 
-          <div style={styles.actions}>
+          <div className="form-actions" style={styles.actions}>
             <button
               type="submit"
               disabled={submitting || !canSubmit}

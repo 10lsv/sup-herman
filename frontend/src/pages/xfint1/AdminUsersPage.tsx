@@ -81,7 +81,7 @@ export function AdminUsersPage() {
 
         {error && <div style={styles.error}>{error}</div>}
 
-        <div style={styles.actions}>
+        <div className="form-actions" style={styles.actions}>
           <button type="submit" disabled={submitting} style={styles.submit}>
             {submitting ? 'Création…' : 'Créer le compte'}
           </button>
@@ -97,7 +97,7 @@ export function AdminUsersPage() {
             le {new Date(created.invite_expires_at).toLocaleDateString('fr-FR')}.
           </p>
           <code style={styles.inviteLink}>{inviteLink}</code>
-          <div style={styles.actions}>
+          <div className="form-actions" style={styles.actions}>
             <button
               type="button"
               onClick={() => {

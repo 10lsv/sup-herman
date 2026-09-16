@@ -100,22 +100,28 @@ export function ExpenseDetailModal({
     !!note && isAccounting && note.status === 'approved_accounting';
 
   return (
-    <div style={styles.overlay} onClick={onClose} role="presentation">
+    <div
+      className="modal-overlay"
+      style={styles.overlay}
+      onClick={onClose}
+      role="presentation"
+    >
       <div
+        className="modal"
         style={styles.modal}
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
         aria-label="Détail de la note de frais"
       >
-        <header style={styles.header}>
-          <h2 style={styles.title}>{note ? note.title : 'Note de frais'}</h2>
+        <header className="modal-header" style={styles.header}>
+          <h2 className="modal-title" style={styles.title}>{note ? note.title : 'Note de frais'}</h2>
           <button onClick={onClose} style={styles.close} aria-label="Fermer">
             ×
           </button>
         </header>
 
-        <div style={styles.content}>
+        <div className="modal-body" style={styles.content}>
           {loading && <p style={styles.muted}>Chargement…</p>}
           {error && <div style={styles.error}>{error}</div>}
 
@@ -136,7 +142,7 @@ export function ExpenseDetailModal({
                 </span>
               </div>
 
-              <dl style={styles.grid}>
+              <dl className="detail-grid" style={styles.grid}>
                 <dt style={styles.dt}>Catégorie</dt>
                 <dd style={styles.dd}>{CATEGORY_LABEL[note.category]}</dd>
 
@@ -215,7 +221,7 @@ export function ExpenseDetailModal({
                       style={styles.textarea}
                     />
                   </label>
-                  <div style={styles.actionRow}>
+                  <div className="modal-actions" style={styles.actionRow}>
                     {canApprove && (
                       <button
                         onClick={() => void handleDecision('approved')}

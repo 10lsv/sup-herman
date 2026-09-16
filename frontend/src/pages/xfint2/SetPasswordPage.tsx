@@ -84,7 +84,7 @@ export function SetPasswordPage() {
   if (!isActivation && !sessionUser) {
     return (
       <main style={styles.page}>
-        <section style={styles.card}>
+        <section className="auth-card" style={styles.card}>
           <h1 style={styles.title}>Définir un mot de passe</h1>
           <p style={styles.muted}>
             Ce lien d'activation est incomplet. Demandez-en un nouveau à votre
@@ -98,7 +98,7 @@ export function SetPasswordPage() {
 
   return (
     <main style={styles.page}>
-      <section style={styles.card}>
+      <section className="auth-card" style={styles.card}>
         <h1 style={styles.title}>
           {isActivation ? 'Activer mon compte' : 'Changer mon mot de passe'}
         </h1>
@@ -195,6 +195,9 @@ const styles: Record<string, React.CSSProperties> = {
   },
   card: {
     width: 'min(420px, 100%)',
+    // Sans border-box, le padding s'ajoute à la largeur : 476 px, plus large
+    // qu'un écran de 375 px.
+    boxSizing: 'border-box',
     padding: 28,
     background: '#fff',
     borderRadius: 10,

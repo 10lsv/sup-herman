@@ -60,7 +60,7 @@ export function ExpenseApprovalsPage() {
 
   return (
     <section>
-      <header style={styles.header}>
+      <header className="page-header" style={styles.header}>
         <h1 style={styles.title}>Notes de frais — validation</h1>
         {pendingStatuses && (
           <label style={styles.filter}>
@@ -85,8 +85,8 @@ export function ExpenseApprovalsPage() {
             : 'Aucune note de frais.'}
         </p>
       ) : (
-        <div style={styles.tableWrap}>
-          <table style={styles.table}>
+        <div className="table-scroll" style={styles.tableWrap}>
+          <table className="data-table" style={styles.table}>
             <thead>
               <tr>
                 <th style={styles.th}>Salarié</th>

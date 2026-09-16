@@ -30,7 +30,7 @@ export function ProfilePage() {
     <section>
       <h1 style={styles.title}>Mon profil</h1>
 
-      <dl style={styles.grid}>
+      <dl className="detail-grid" style={styles.grid}>
         <dt style={styles.dt}>Email</dt>
         <dd style={styles.dd}>{user.email}</dd>
 
