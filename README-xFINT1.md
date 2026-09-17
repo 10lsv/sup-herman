@@ -14,14 +14,14 @@ s'installent et se lancent ensemble.
 
 ### Prérequis
 
-- Node.js 20 ou supérieur (développé et testé sous Node 24.14, npm 11.11)
+- Node.js 20 ou supérieur 
 - PostgreSQL 15 ou supérieur, en local ou via Docker
 - Git
 
 ### Récupérer les dépendances
 
 ```bash
-git clone <url-du-dépôt> sup-herman-projects
+git clone https://github.com/10lsv/sup-herman sup-herman-projects
 cd sup-herman-projects
 
 cd backend  && npm install

@@ -22,7 +22,7 @@ se lancent ensemble.
 ### Récupérer les dépendances
 
 ```bash
-git clone <url-du-dépôt> sup-herman-projects
+git clone https://github.com/10lsv/sup-herman sup-herman-projects
 cd sup-herman-projects
 
 cd backend  && npm install
