@@ -171,7 +171,7 @@ guillemets doubles, bash et zsh interprètent le `!` du mot de passe.
 | `backend` | `npm run dev` | API en rechargement à chaud (tsx watch) |
 | `backend` | `npm run build` | Compilation TypeScript vers `dist/` |
 | `backend` | `npm start` | Lance `dist/index.js` |
-| `backend` | `npm run seed` | Crée les comptes de démonstration |
+| `backend` | `npm run seed` | Crée les comptes de test, ou remet à niveau leur mot de passe et leur rôle |
 | `frontend` | `npm run dev` | Serveur de développement Vite |
 | `frontend` | `npm run build` | Vérification des types puis build de production |
 | `frontend` | `npm run preview` | Sert le build de production |
