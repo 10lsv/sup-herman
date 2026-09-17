@@ -14,6 +14,7 @@ import {
 import type {
   LeaveAttachment,
   LeaveBalanceSummary,
+  LeaveDecision,
   LeaveRequest,
   LeaveStatus,
   LeaveType,
@@ -55,7 +56,7 @@ const calendarQuerySchema = z
   .refine((v) => v.from <= v.to, { message: 'from doit précéder to', path: ['to'] });
 
 const updateStatusSchema = z.object({
-  status: z.enum(['approved', 'rejected', 'cancelled']),
+  status: z.enum(['approved', 'rejected', 'cancelled', 'submitted', 'approved_hr']),
   comment: z.string().trim().max(5000).optional(),
 });
 
@@ -73,6 +74,28 @@ function parseId(raw: string | string[] | undefined): number | null {
 
 /** Statuts qui immobilisent du solde : ni refusés, ni annulés. */
 const ACTIVE_STATUSES = ['submitted', 'approved_manager', 'approved_hr', 'approved'];
+
+/** Rôles qui peuvent corriger le statut de n'importe quelle demande (xFINT2 p. 5). */
+const CORRECTOR_ROLES: UserRole[] = ['hr', 'admin'];
+
+/**
+ * Correction par la RH ou un admin : `submitted`, `approved_hr`, `rejected` et
+ * `cancelled` sont atteignables depuis n'importe quel statut, y compris une
+ * demande close. `approved` garde le sens du circuit (resolveStatus).
+ */
+function resolveCorrection(
+  decision: LeaveDecision,
+  role: UserRole,
+  current: LeaveStatus,
+): { status: LeaveStatus } | { error: string } {
+  if (decision === 'approved') return resolveStatus(decision, role, current);
+
+  // `approved` est l'ancienne valeur de `approved_hr`, conservée en base.
+  const same =
+    decision === current || (decision === 'approved_hr' && current === 'approved');
+  if (same) return { error: `La demande est déjà au statut ${current}` };
+  return { status: decision };
+}
 
 /**
  * Traduit la décision générique { approved | rejected | cancelled } vers le
@@ -489,9 +512,12 @@ leavesRouter.get('/:id', async (req: Request, res: Response, next: NextFunction)
 });
 
 // ---------------------------------------------------------------------------
-// PATCH /api/leaves/:id/status — validation / refus / annulation
+// PATCH /api/leaves/:id/status — validation / refus / annulation / correction
 //   approved & rejected : manager, RH, admin.
 //   cancelled : également le demandeur, sur sa propre demande.
+//   RH et admin corrigent en plus n'importe quelle demande : submitted,
+//   approved_hr, rejected ou cancelled depuis tout statut (resolveCorrection),
+//   avec un commentaire obligatoire pour un refus.
 // ---------------------------------------------------------------------------
 
 leavesRouter.patch(
@@ -526,6 +552,14 @@ leavesRouter.patch(
 
       const isOwner = leave.user_id === req.user.id;
       const isPrivileged = PRIVILEGED.includes(req.user.role);
+      const isCorrector = CORRECTOR_ROLES.includes(req.user.role);
+
+      if ((decision === 'submitted' || decision === 'approved_hr') && !isCorrector) {
+        await client.query('ROLLBACK');
+        return res
+          .status(403)
+          .json({ error: 'Seule la RH peut fixer directement ce statut' });
+      }
 
       if (decision === 'cancelled') {
         if (!isOwner && !isPrivileged) {
@@ -546,15 +580,83 @@ leavesRouter.patch(
         }
       }
 
-      const resolved = resolveStatus(decision, req.user.role, leave.status);
+      const resolved = isCorrector
+        ? resolveCorrection(decision, req.user.role, leave.status)
+        : resolveStatus(
+            decision as 'approved' | 'rejected' | 'cancelled',
+            req.user.role,
+            leave.status,
+          );
       if ('error' in resolved) {
         await client.query('ROLLBACK');
         return res.status(409).json({ error: resolved.error });
       }
 
+      if (isCorrector && resolved.status === 'rejected' && !comment) {
+        await client.query('ROLLBACK');
+        return res
+          .status(400)
+          .json({ error: 'Un commentaire est obligatoire pour refuser une demande' });
+      }
+
+      const days = Number(leave.days_requested);
+      const year = balanceYear(leave.start_date);
+      const engages = resolved.status === 'submitted' || resolved.status === 'approved_hr';
+
+      if (engages) {
+        // Une demande rouverte ne doit pas recouvrir une autre demande active.
+        const overlap = await client.query<{ id: number }>(
+          `SELECT id FROM leave_requests
+            WHERE user_id = $1
+              AND id <> $2
+              AND status = ANY($3::leave_status[])
+              AND start_date <= $5::date
+              AND end_date   >= $4::date
+            LIMIT 1`,
+          [leave.user_id, leave.id, ACTIVE_STATUSES, leave.start_date, leave.end_date],
+        );
+        if (overlap.rows[0]) {
+          await client.query('ROLLBACK');
+          return res.status(409).json({
+            error: `La période chevauche la demande #${overlap.rows[0].id}`,
+          });
+        }
+      }
+
+      const delta = balanceDelta(leave.status, resolved.status);
+      if (delta.pending !== 0 || delta.used !== 0 || resolved.status === 'approved_hr') {
+        const balance = await lockBalance(client, leave.user_id, leave.leave_type_id, year);
+
+        if (resolved.status === 'approved_hr' && balance.allocated > 0) {
+          // Les jours que la demande occupe déjà (en attente ou pris) lui sont
+          // rendus avant de comparer.
+          const alreadyCounted = delta.pending < 0 || delta.used < 0 ? days : 0;
+          const available =
+            balance.allocated - balance.used - balance.pending + alreadyCounted;
+          if (days > available) {
+            await client.query('ROLLBACK');
+            return res.status(409).json({
+              error: `Solde insuffisant : ${available} jour(s) disponible(s), ${days} demandé(s)`,
+            });
+          }
+        }
+
+        await applyBalanceDelta(
+          client,
+          leave.user_id,
+          leave.leave_type_id,
+          year,
+          delta.pending * days,
+          delta.used * days,
+        );
+      }
+
       // Le commentaire et l'horodatage vont dans la colonne du rôle qui agit.
+      // Une correction (remise en attente comprise) est un acte RH.
       const isHrStep =
-        req.user.role === 'hr' || resolved.status === 'approved_hr';
+        req.user.role === 'hr' ||
+        resolved.status === 'approved_hr' ||
+        resolved.status === 'submitted';
 
       const updated = await client.query<LeaveRequest>(
         isHrStep
@@ -574,21 +676,6 @@ leavesRouter.patch(
               RETURNING *`,
         [resolved.status, req.user.id, comment ?? null, id],
       );
-
-      const delta = balanceDelta(leave.status, resolved.status);
-      if (delta.pending !== 0 || delta.used !== 0) {
-        const days = Number(leave.days_requested);
-        const year = balanceYear(leave.start_date);
-        await lockBalance(client, leave.user_id, leave.leave_type_id, year);
-        await applyBalanceDelta(
-          client,
-          leave.user_id,
-          leave.leave_type_id,
-          year,
-          delta.pending * days,
-          delta.used * days,
-        );
-      }
 
       await client.query('COMMIT');
       res.json(updated.rows[0]);

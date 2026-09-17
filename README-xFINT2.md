@@ -233,6 +233,10 @@ Le demandeur peut annuler sa demande à tout moment tant qu'elle n'est pas close
 y compris après validation RH : les jours lui sont alors restitués. Personne ne
 valide sa propre demande.
 
+La RH peut en outre **corriger le statut de n'importe quelle demande**, close
+comprise (voir « RH » ci-dessous) : les compteurs du solde sont recalculés à
+chaque correction.
+
 ### Le décompte des jours
 
 Le nombre de jours est **calculé par le serveur**, jamais transmis par le
@@ -308,6 +312,21 @@ Le même écran de validation, positionné sur la seconde étape : la RH approuv
 les demandes déjà validées par un manager. C'est cette validation qui bascule
 les jours de « en attente » vers « pris ».
 
+**Corriger une erreur** — dans le détail de n'importe quelle demande (sauf la
+sienne), la RH dispose de boutons supplémentaires :
+
+| Statut actuel | Actions RH |
+|---|---|
+| Refusée ou annulée | **Valider**, **Remettre en attente** |
+| Validée (RH) | **Refuser**, **Remettre en attente**, Annuler |
+
+Un refus prononcé par la RH exige un commentaire RH. Chaque correction
+recalcule le solde : les jours comptés en attente ou pris sont restitués, puis
+réengagés selon le nouveau statut (en attente → « en attente », validée →
+« pris », refusée ou annulée → rien). Une remise en attente ou une validation
+est refusée si la période chevauche une autre demande active du salarié ; une
+validation l'est aussi si le solde ne suffit pas.
+
 - **Gestion RH** (`/leaves/hr`) — l'annuaire complet : email,
   rôle, manager de rattachement, état du compte, soldes CP et RTT.
   - **+ Créer un utilisateur** — email, rôle (Employé, Manager ou RH) et
@@ -353,7 +372,7 @@ exception signalée, `/api/users` exigent un en-tête
 | `GET` | `/api/leaves/calendar` | connecté | Congés validés d'une période, pour le calendrier |
 | `POST` | `/api/leaves` | connecté | Création, statut `submitted` d'emblée |
 | `GET` | `/api/leaves/:id` | propriétaire ou rôle valideur | Détail + justificatifs |
-| `PATCH` | `/api/leaves/:id/status` | valideurs ; annulation aussi au demandeur | Décision |
+| `PATCH` | `/api/leaves/:id/status` | valideurs ; annulation aussi au demandeur ; correction par la RH | Décision |
 | `GET` | `/api/leaves/balance/:user_id` | soi-même ou rôle valideur | Soldes par type |
 | `PATCH` | `/api/leaves/balance/:user_id` | RH, admin | Ajuste une dotation |
 | `POST` | `/api/leaves/:id/attachments` | propriétaire, RH, admin | Envoi multipart, champ `files` |
@@ -412,6 +431,28 @@ demande.
 `status` vaut `approved`, `rejected` ou `cancelled`. Comme pour les notes de
 frais, le statut réel dépend du rôle et de l'étape : un `approved` posé par un
 manager donne `approved_manager`, le même posé par la RH donne `approved_hr`.
+Pour un manager ou un salarié, une demande refusée ou annulée est close :
+toute nouvelle décision renvoie `409`.
+
+**Correction par la RH ou un admin.** Deux valeurs supplémentaires,
+`submitted` et `approved_hr`, fixent directement le statut cible ; avec
+`rejected` et `cancelled`, elles sont acceptées **depuis n'importe quel
+statut**, demande close comprise.
+
+```json
+{ "status": "approved_hr", "comment": "Refus erroné, congé accordé" }
+```
+
+| Règle | Réponse en cas d'échec |
+|---|---|
+| `submitted` ou `approved_hr` envoyé par un autre rôle | `403` |
+| `rejected` sans `comment` (RH, admin) | `400` |
+| Statut cible identique au statut actuel | `409` |
+| `submitted` / `approved_hr` : période qui chevauche une autre demande active | `409` |
+| `approved_hr` : solde insuffisant sur un type plafonné | `409` |
+
+Le solde est recalculé dans la même transaction : ce qui était compté (en
+attente ou pris) est restitué, puis réengagé selon le nouveau statut.
 
 **`PATCH /api/leaves/balance/:user_id`**
 

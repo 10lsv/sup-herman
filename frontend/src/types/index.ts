@@ -245,8 +245,11 @@ export interface CreateLeaveRequest {
   comment?: string;
 }
 
-/** Décision envoyée à PATCH /api/leaves/:id/status. */
-export type LeaveDecision = 'approved' | 'rejected' | 'cancelled';
+/**
+ * Décision envoyée à PATCH /api/leaves/:id/status. `submitted` et
+ * `approved_hr` sont réservés à la correction par la RH ou un admin.
+ */
+export type LeaveDecision = 'approved' | 'rejected' | 'cancelled' | 'submitted' | 'approved_hr';
 
 export interface LoginRequest {
   email: string;

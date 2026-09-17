@@ -144,6 +144,16 @@ export function LeaveDetailModal({ leaveId, onClose, onUpdated }: LeaveDetailMod
   const canReject = open && !isOwner && (isManager || isHR);
   // Le demandeur peut retirer sa demande tant qu'elle n'est pas close.
   const canCancel = open && (isOwner || isManager || isHR);
+
+  // Correction RH (xFINT2 p. 5) : une demande close ou validée peut être
+  // remise en attente, une demande close peut être validée directement. Le
+  // refus d'une demande validée passe par canReject. Jamais sur la sienne.
+  const canCorrect = !!leave && isHR && !isOwner;
+  const isValidated = !!leave && isApprovedLeave(leave.status);
+  const canReopen = canCorrect && (!open || isValidated);
+  const canForceApprove = canCorrect && !open;
+  // Le back exige un commentaire RH pour tout refus prononcé par la RH.
+  const rejectNeedsComment = isHR && comment.trim() === '';
   // Dépôt et suppression : le demandeur, la RH ou un admin (miroir du back).
   const canEditAttachments = !!leave && (isOwner || isHR);
 
@@ -319,10 +329,18 @@ export function LeaveDetailModal({ leaveId, onClose, onUpdated }: LeaveDetailMod
                 )}
               </section>
 
-              {(canApprove || canReject || canCancel) && (
+              {(canApprove || canReject || canCancel || canReopen || canForceApprove) && (
                 <section style={styles.actions}>
+                  {!open && canCorrect && (
+                    <p style={styles.muted}>
+                      Demande close. En tant que RH, vous pouvez la remettre en
+                      attente ou la valider : le solde est recalculé.
+                    </p>
+                  )}
                   <label style={styles.label}>
-                    Commentaire de décision (optionnel)
+                    {isHR
+                      ? 'Commentaire RH (obligatoire pour un refus)'
+                      : 'Commentaire de décision (optionnel)'}
                     <textarea
                       value={comment}
                       onChange={(e) => setComment(e.target.value)}
@@ -344,13 +362,35 @@ export function LeaveDetailModal({ leaveId, onClose, onUpdated }: LeaveDetailMod
                             : 'Approuver (RH)'}
                       </button>
                     )}
+                    {canForceApprove && (
+                      <button
+                        onClick={() => void handleDecision('approved_hr')}
+                        disabled={acting}
+                        style={styles.approve}
+                      >
+                        {acting ? '…' : 'Valider'}
+                      </button>
+                    )}
                     {canReject && (
                       <button
                         onClick={() => void handleDecision('rejected')}
-                        disabled={acting}
-                        style={styles.reject}
+                        disabled={acting || rejectNeedsComment}
+                        title={rejectNeedsComment ? 'Saisissez un commentaire RH' : undefined}
+                        style={{
+                          ...styles.reject,
+                          ...(rejectNeedsComment ? styles.disabled : {}),
+                        }}
                       >
                         {acting ? '…' : 'Refuser'}
+                      </button>
+                    )}
+                    {canReopen && (
+                      <button
+                        onClick={() => void handleDecision('submitted')}
+                        disabled={acting}
+                        style={styles.cancel}
+                      >
+                        {acting ? '…' : 'Remettre en attente'}
                       </button>
                     )}
                     {canCancel && (
@@ -503,6 +543,7 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: 14,
     cursor: 'pointer',
   },
+  disabled: { opacity: 0.5, cursor: 'not-allowed' },
   cancel: {
     padding: '9px 16px',
     borderRadius: 6,
