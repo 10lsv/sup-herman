@@ -101,11 +101,13 @@ export function requireRole(...allowed: UserRole[]): RequestHandler {
   };
 }
 
-// Raccourcis pour lisibilité côté routes.
-export const requireManager = requireRole('manager', 'admin');
-export const requireAccounting = requireRole('accounting', 'admin');
-export const requireHR = requireRole('hr', 'admin');
-export const requireAdmin = requireRole('admin');
+// Raccourcis pour lisibilité côté routes. Type explicite : inféré, il renvoie
+// à @types/qs, que la génération des .d.ts ne sait pas toujours nommer (échec
+// de build quand le projet est ouvert via un lien symbolique, /tmp sur macOS).
+export const requireManager: RequestHandler = requireRole('manager', 'admin');
+export const requireAccounting: RequestHandler = requireRole('accounting', 'admin');
+export const requireHR: RequestHandler = requireRole('hr', 'admin');
+export const requireAdmin: RequestHandler = requireRole('admin');
 
 /**
  * Restreint l'accès à la ressource au propriétaire (userId param/body)
